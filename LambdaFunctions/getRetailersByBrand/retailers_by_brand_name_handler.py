@@ -13,7 +13,7 @@ conn = psycopg2.connect(
 
 def lambda_handler(event, context):
     curr = conn.cursor(cursor_factory = psycopg2.extras.RealDictCursor)
-    curr.execute("select * from retailer")
+    curr.execute("select * from ")
     results = curr.fetchall()
     json_result = json.dumps(results)
     print(json_result)

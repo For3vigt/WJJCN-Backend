@@ -2,17 +2,13 @@ from http.client import ImproperConnectionState
 import psycopg2
 import psycopg2.extras
 import json
-
-host = "woc.cdtpo0oxyy5p.eu-central-1.rds.amazonaws.com"
-username = "postgres"
-password = "CgnB!#HSrhKqG8&K"
-database = "woc"
+import os
 
 conn = psycopg2.connect(
-    host = host,
-    database = database,
-    user = username,
-    password = password
+    host = os.environ.get('db_host'),
+    database = os.environ.get('db'),
+    user = os.environ.get('db_user'),
+    password = os.environ.get('db_pass')
 )
 
 def lambda_handler(event, context):
