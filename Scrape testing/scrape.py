@@ -22,7 +22,7 @@ d = webdriver.Chrome(service=Service(
     ().install()), chrome_options=chrome_options)
 product = 'Energy drink'
 
-d.get('https://www.ah.nl/')
+d.get('https://www.jumbo.com/')
 
 try :
     element = WebDriverWait(d, 10).until(
@@ -41,14 +41,7 @@ finally:
         e = d.find_element(By.XPATH, "//input[@placeholder='Waar ben je naar op zoek?']")
         e = e.send_keys(product + '\n')
         
-try :
-    element = WebDriverWait(d, 10).until(
-        EC.presence_of_element_located((By.XPATH, "//input[@placeholder='Waar ben je naar op zoek?']"))
-    )
-finally:
-    if element:
-        e = d.find_element(By.XPATH, "//input[@placeholder='Waar ben je naar op zoek?']")
-        e = e.send_keys(product + '\n')
+
 
 
 
