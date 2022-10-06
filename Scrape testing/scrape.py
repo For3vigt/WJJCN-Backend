@@ -25,7 +25,7 @@ product = 'Red Bull Energy Drink 4-pack'
 d.get('https://www.jumbo.com/')
 
 try:
-    element = WebDriverWait(d, 10).until(
+    element = WebDriverWait(d, 1).until(
         EC.presence_of_element_located(
             (By.XPATH, "//*[contains(text(), 'Weigeren')]"))
     )
@@ -34,7 +34,7 @@ finally:
         d.find_element(By.XPATH, "//*[contains(text(), 'Weigeren')]").click()
 
 try:
-    element = WebDriverWait(d, 10).until(
+    element = WebDriverWait(d, 1).until(
         EC.presence_of_element_located(
             (By.XPATH, "//input[@placeholder='Waar ben je naar op zoek?']"))
     )
@@ -44,13 +44,13 @@ finally:
             By.XPATH, "//input[@placeholder='Waar ben je naar op zoek?']")
         e = e.send_keys(product + '\n')
 try:
-    element = WebDriverWait(d, 10).until(
+    element = WebDriverWait(d, 1).until(
         EC.presence_of_element_located(
             (By.XPATH, "//*[normalize-space(text()) = '" + product + "']"))
     )
 except:
     try:
-        elementContains = WebDriverWait(d, 10).until(
+        elementContains = WebDriverWait(d, 1).until(
             EC.presence_of_element_located(
                 (By.XPATH, "//a[text()[contains(.,'" + product + "')]]"))
         )
@@ -59,9 +59,18 @@ except:
 
     else:
         if elementContains:
-            hoer = d.find_element(
+            e = d.find_element(
                 By.XPATH,  "//a[text()[contains(.,'" + product + "')]]").click()
 else:
     if element:
         e = d.find_element(
             By.XPATH,  "//*[normalize-space(text()) = '" + product + "']").click()
+
+
+try:
+    e = d.find_element(
+        By.XPATH,  "//*[text()[contains(.,'" + product + "')]]")
+except:
+    print("Something went terribly wrong!")
+else:
+    print("Added score to database!")
