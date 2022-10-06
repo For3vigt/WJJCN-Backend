@@ -354,3 +354,17 @@ cython_debug/
 #.idea/
 
 # End of https://www.toptal.com/developers/gitignore/api/python,pycharm,jetbrains
+linkscraper/.idea/linkscraper.iml
+linkscraper/.idea/.gitignore
+linkscraper/.idea/misc.xml
+linkscraper/.idea/modules.xml
+linkscraper/.idea/vcs.xml
+linkscraper/.idea/inspectionProfiles/profiles_settings.xml
+linkscraper/.idea/inspectionProfiles/Project_Default.xml
+pythonProject/.idea/.gitignore
+pythonProject/.idea/misc.xml
+pythonProject/.idea/modules.xml
+pythonProject/.idea/pythonProject.iml
+pythonProject/.idea/vcs.xml
+pythonProject/.idea/inspectionProfiles/profiles_settings.xml
+pythonProject/.idea/inspectionProfiles/Project_Default.xml
