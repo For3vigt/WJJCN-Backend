@@ -20,7 +20,7 @@ chrome_options.add_argument('start-maximized')
 d = webdriver.Chrome(service=Service(
     ChromeDriverManager
     ().install()), chrome_options=chrome_options)
-product = 'Energy drink'
+product = 'Red Bull Energy Drink'
 
 d.get('https://www.jumbo.com/')
 
@@ -40,6 +40,13 @@ finally:
     if element:
         e = d.find_element(By.XPATH, "//input[@placeholder='Waar ben je naar op zoek?']")
         e = e.send_keys(product + '\n')
+try :
+    element = WebDriverWait(d, 10).until(
+        EC.presence_of_element_located((By.XPATH, "//*[text()[contains(.,"+ "'"+ product+ "')]]"))
+    )
+finally:
+    if element:
+        e = d.find_element(By.XPATH, "//*[text()[contains(.,"+ "'"+ product+ "')]]").click()
         
 
 
