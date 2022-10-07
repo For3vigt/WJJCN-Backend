@@ -31,7 +31,9 @@ try:
         EC.presence_of_element_located(
             (By.XPATH, "//*[contains(text(), 'Weigeren')]"))
     )
-finally:
+except:
+    print("Could not find element!")
+else:
     if element:
         d.find_element(By.XPATH, "//*[contains(text(), 'Weigeren')]").click()
 
@@ -41,7 +43,9 @@ try:
         EC.presence_of_element_located(
             (By.XPATH, "//input[@placeholder='Waar ben je naar op zoek?']"))
     )
-finally:
+except:
+    print("Could not find element!")
+else:
     if element:
         e = d.find_element(
             By.XPATH, "//input[@placeholder='Waar ben je naar op zoek?']")
