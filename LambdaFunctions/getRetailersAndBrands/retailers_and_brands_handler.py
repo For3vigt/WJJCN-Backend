@@ -8,9 +8,7 @@ mydb = myclient[os.environ.get("db")]
 mycol = mydb["brand_retailer_products"]
 
 def lambda_handler(event, context):
-    brand = '{}'.format(event['brand'])
-    mysql = { "brand": brand }
-    mydoc = mycol.find(mysql)
+    mydoc = mycol.find()
     json_result = json.loads(json_util.dumps(mydoc))
     
     return(json_result)
