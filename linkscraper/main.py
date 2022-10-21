@@ -1,10 +1,14 @@
+import math
 from datetime import datetime
 from bs4 import BeautifulSoup
 from urllib.parse import urlparse, urljoin
 import requests
+import pymongo
+import bson.json_util as json_util
 import sys
 import re
 
+brands = []
 internal_urls = set()
 domain_url = ""
 
@@ -14,6 +18,25 @@ timeout_counter = 0
 
 timeout_retry = 15
 request_timeout_in_seconds = 5
+
+''' 
+    DATABASE
+'''
+client = pymongo.MongoClient('mongodb+srv://wjjcn:Sl33fAQiLusKGsx8@woc.amjwpqs.mongodb.net/')
+
+with client:
+    db = client.wjjcn
+    e = db.brand_retailer_product.find()
+
+    for item in e:
+        brands.append(item['brand'])
+''' 
+    END DATABASE
+'''
+
+''' 
+    WEBCRAWLER
+'''
 
 
 def is_valid(url):
@@ -116,9 +139,15 @@ def get_all_website_links(url):
                     continue
                 if href.startswith("#"):
                     continue
+                if "https://" not in href:
+                    if not href.startswith("/"):
+                        href = "/" + href
+                if "https://www." not in href:
+                    if "https://" not in href:
+                        if not href.startswith("/"):
+                            href = "/" + href
 
                 href = urljoin(url, href)
-
                 # checks if the given url starts with the correct domain else it goes to the next link on the page
                 if not check_if_url_starts_with_domain(first_url, href):
                     continue
@@ -183,11 +212,71 @@ def crawl(url):
             continue
 
 
+''' 
+    END WEBCRAWLER
+'''
+
+''' 
+    STRING COMPARER
+'''
+
+
+def similarity(s1, s2):
+    longer = s1
+    shorter = s2
+
+    if len(s1) < len(s2):
+        longer = s2
+        shorter = s1
+
+    longer_length = len(longer)
+    if longer_length == 0:
+        return 1.0
+
+    return round((longer_length - edit_distance(longer, shorter)) / float(longer_length) * 100, 0)
+
+
+def edit_distance(s1, s2):
+    s1 = s1.lower()
+    s2 = s2.lower()
+
+    costs = [0] * 100
+
+    for i in range(len(s1)):
+        last_value = i
+
+        for j in range(len(s2)):
+            if i == 0:
+                costs[j] = j
+            else:
+                if j > 0:
+                    new_value = costs[j - 1]
+                    if s1[i - 1] != s2[j - 1]:
+                        new_value = min(min(new_value, last_value),
+                                        costs[j]) + 1
+
+                    costs[j - 1] = last_value
+                    last_value = new_value
+        if i > 0:
+            costs[len(s2)] = last_value
+
+    return costs[len(s2)]
+
+
+''' 
+    END STRING COMPARER
+'''
+
+''' 
+    PROGRAM
+'''
+
 try:
     print("-- Enter the URL you want to crawl --")
     enter_url = input()
 
     if enter_url != "":
+
         first_url = enter_url
         start_time = datetime.now()
 
@@ -209,7 +298,15 @@ try:
 
         end_time = datetime.now()
         print('Duration: {}'.format(end_time - start_time))
+
+        for brand in brands:
+            print(similarity(brand, "Red Bull"))
+
     if enter_url == "":
         sys.exit()
 except ValueError:
     sys.exit()
+
+''' 
+    END PROGRAM
+'''
