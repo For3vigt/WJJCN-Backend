@@ -1,11 +1,28 @@
 from bs4 import BeautifulSoup
-from urllib.request import urlopen
-from urllib.parse import urlparse, urljoin
 import re
+import pymongo
 import requests
 
-
+brands = []
 CLEANR = re.compile('<.*?>')
+
+
+''' 
+    DATABASE
+'''
+client = pymongo.MongoClient('mongodb+srv://wjjcn:Sl33fAQiLusKGsx8@woc.amjwpqs.mongodb.net/')
+
+with client:
+    db = client.wjjcn
+    e = db.brand_retailer_product.find()
+
+    for item in e:
+        brands.append(item['brand'])
+''' 
+    END DATABASE
+'''
+
+
 
 def cleanhtml(raw_html):
     cleantext = re.sub(CLEANR, '', raw_html)

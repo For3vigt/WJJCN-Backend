@@ -7,6 +7,10 @@ import pymongo
 import bson.json_util as json_util
 import sys
 import re
+import certifi
+ca = certifi.where()
+
+
 
 brands = []
 internal_urls = set()
@@ -22,7 +26,7 @@ request_timeout_in_seconds = 5
 ''' 
     DATABASE
 '''
-client = pymongo.MongoClient('mongodb+srv://wjjcn:Sl33fAQiLusKGsx8@woc.amjwpqs.mongodb.net/')
+client = pymongo.MongoClient("mongodb+srv://wjjcn:Sl33fAQiLusKGsx8@woc.amjwpqs.mongodb.net/", tlsCAFile=ca)
 
 with client:
     db = client.wjjcn
@@ -67,7 +71,7 @@ def check_if_url_starts_with_domain(domain, linke):
         return False
 
 
-def pause_and_resume_script(url):
+def pause_and_resume_script():
     print("Pausing program \nPlease press enter")
     global timeout_counter
 
@@ -78,7 +82,7 @@ def pause_and_resume_script(url):
             val = input()
             val = int(val)
         except ValueError:
-            print("""~~~~~~~Code interupted~~~~~~~ \n Press 1 to resume \n Press 2 to quit """)
+            print("""~~~~~~~Code interrupted~~~~~~~ \n Press 1 to resume \n Press 2 to quit """)
             res = input()
             if res == "1":
                 timeout_counter = 0
@@ -111,7 +115,7 @@ def get_url(url):
             timeout_counter = counter
             get_url(url)
     else:
-        pause_and_resume_script(url)
+        pause_and_resume_script()
         timeout_counter = 0
         get_url(url)
 
