@@ -110,7 +110,7 @@ def get_url(url):
             else:
                 get_url(url)
         except:
-            print("An error occured")
+            print("An error occurred. Please check your internet connection.")
             counter += 1
             timeout_counter = counter
             get_url(url)
@@ -275,42 +275,51 @@ def edit_distance(s1, s2):
     PROGRAM
 '''
 
-try:
-    print("-- Enter the URL you want to crawl --")
-    enter_url = input()
 
-    if enter_url != "":
+def main():
+    try:
+        print("-- Enter the URL you want to crawl --")
+        enter_url = input()
 
-        first_url = enter_url
-        start_time = datetime.now()
+        if enter_url != "":
+            try:
 
-        crawl(first_url)
+                first_url = enter_url
+                start_time = datetime.now()
 
-        print("[/---------------------------/]")
-        print(len(internal_urls))
-        print("[/---------------------------/]")
+                crawl(first_url)
 
-        with open('links' + domain_name + '.txt', 'w') as f:
-            for link in internal_urls:
-                print("found link: ", link)
-                f.write(link)
-                f.write('\n')
+                print("[/---------------------------/]")
+                print(len(internal_urls))
+                print("[/---------------------------/]")
 
-        f.close()
+                with open('links' + domain_name + '.txt', 'w') as f:
+                    for link in internal_urls:
+                        print("found link: ", link)
+                        f.write(link)
+                        f.write('\n')
 
-        print("[+] Total links:", len(internal_urls))
+                f.close()
 
-        end_time = datetime.now()
-        print('Duration: {}'.format(end_time - start_time))
+                print("[+] Total links:", len(internal_urls))
 
-        for brand in brands:
-            print(similarity(brand, "Red Bull"))
+                end_time = datetime.now()
+                print('Duration: {}'.format(end_time - start_time))
 
-    if enter_url == "":
+                for brand in brands:
+                    print(similarity(brand, "Red Bull"))
+            except:
+                print("link is not valid")
+            finally:
+                main()
+
+        if enter_url == "":
+            sys.exit()
+    except ValueError:
         sys.exit()
-except ValueError:
-    sys.exit()
+
 
 ''' 
     END PROGRAM
 '''
+main()
