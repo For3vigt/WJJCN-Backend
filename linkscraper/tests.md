@@ -8,7 +8,7 @@ RAM: 16GB SODIMM DDR4 3200 MHz
 Websites:  
 ah.nl  
 Started running on 9:15  
-finished 14:35. runtime 5:20  
+finished 14:35. runtime 5h and 20 minutes  
 
 
 	RAM:
@@ -23,7 +23,7 @@ finished 14:35. runtime 5:20
 Websites:  
 dirk.nl & jumbo.com  
 Started running 16:10  
-jumbo finished 22:40  
+jumbo finished 22:40 (5h and 30 minutes)  
 dirk crashed
 
 	RAM:
@@ -79,7 +79,7 @@ RAM: 16GB SODIMM DDR4 3200 MHz
 Websites:  
 dirk.nl  
 Started running 11:08  
-Finished after 
+TEST FAILED
   
 Note: this test has new and faster code that only scrapes the product category  
 
@@ -90,3 +90,19 @@ Note: this test has new and faster code that only scrapes the product category
 	CPU:
 	1x terminal:		    gem 0.2%
 	1x python 3.10 runtime:	    gem 0.8%
+
+#### TEST 6:
+Websites:  
+dirk.nl  
+Started running 09:38
+Finished after 3h 3 minutes and 26 seconds
+
+Note: this test has new and faster code that only scrapes the product category  
+
+	RAM:
+	1x terminal:		    gem 39MB
+	1x python 3.10 runtime:	    gem 33MB
+	
+	CPU:
+	1x terminal:		    gem 0.2%
+	1x python 3.10 runtime:	    gem 0.9%
