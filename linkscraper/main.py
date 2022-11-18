@@ -1,4 +1,6 @@
 from datetime import datetime
+from typing import re
+
 from bs4 import BeautifulSoup
 from urllib.parse import urlparse, urljoin
 import requests
@@ -14,8 +16,10 @@ products = []
 internal_urls = set()
 read_links = []
 to_scrape = set()
+not_found = set()
 products_with = []
 products_with2 = []
+retailers = []
 brands_with = []
 
 domain_url = ""
@@ -26,23 +30,6 @@ timeout_counter = 0
 
 timeout_retry = 15
 request_timeout_in_seconds = 5
-
-''' 
-    DATABASE
-'''
-client = pymongo.MongoClient("mongodb+srv://wjjcn:Sl33fAQiLusKGsx8@woc.amjwpqs.mongodb.net/", tlsCAFile=ca)
-
-with client:
-    db = client.wjjcn
-    e = db.brand_retailer_product.find()
-
-    for item in e:
-        brands.append(item['brand'])
-        products.append(item['product'])
-
-''' 
-    END DATABASE
-'''
 
 ''' 
     WEBCRAWLER
@@ -227,49 +214,98 @@ def crawl(url):
 '''
 
 
-def find_product_in_urls():
-    # with open('linksjumbo-com.txt') as f:
-    #     for line in f.readlines():
-    #         read_links.append(line.strip())
-    #
-    #     f.close()
+def has_numbers(inputString):
+    return any(char.isdigit() for char in inputString)
+
+
+def find_product_in_urls(url):
+    client = pymongo.MongoClient("mongodb+srv://wjjcn:Sl33fAQiLusKGsx8@woc.amjwpqs.mongodb.net/", tlsCAFile=ca)
+
+    selected_retailer = ""
+    selected_retailer_url = ""
+    selected_brand = ""
+    brand_temp_list = []
+
+    with client:
+        db = client.wjjcn
+        b = db.retailers.find()
+
+        for item in b:
+            if item['base_url'] in url:
+                selected_retailer = item['_id']
+                selected_retailer_url = item['base_url']
+                retailers.append(item['base_url'])
+
+        e = db.products.find({"retailer": selected_retailer})
+
+        for item in e:
+            if item['retailer'] == selected_retailer:
+                brand_temp_list.append(item['brand'])
+                # item['product'] = item['product'].split(" -", 1)[0]
+                item['product'] = re.sub(' +', '-', item['product'])
+                item['product'] = re.sub('-+', '-', item['product'])
+                products.append(item['product'])
+
+        a = db.brands.find()
+
+        for brand in a:
+            for bra in brand_temp_list:
+                if brand["_id"] == bra:
+                    brands.append(brand["name"])
+
+    with open('linksjumbo-com.txt') as f:
+        for line in f.readlines():
+            read_links.append(line.strip())
+
+        f.close()
 
     for link in internal_urls:
         read_links.append(link)
 
-    for i in range(len(products)):
-        products_with.append(products[i].replace(" ", "-"))
+    for j in range(len(list(read_links))):
+        i = 0
+        while i < len(list(products)):
+            if check_if_url_starts_with_domain(selected_retailer_url, read_links[j]):
+                products_with.append(products[i])
+                split_link = read_links[j].split("/")
+                filtered_link = list(filter(None, split_link))
 
-        for j in range(len(read_links)):
-            split_link = read_links[j].split("/")
-            split_link2 = list(filter(None, split_link))
+                for x in range(len(filtered_link)):
 
-            for x in range(len(split_link2)):
-                for b in range(len(brands)):
-                    brands_with.append(brands[b].replace(" ", "-"))
+                    for b in range(len(brands)):
+                        brands_with.append(brands[b].replace(" ", "-"))
 
-                    if brands_with[b].lower() in split_link2[x]:
+                        if brands_with[b].lower() in filtered_link[x]:
+                            # regexMatch = '(' + products[i].lower() + ')(.*)'
+                            # result = re.match(regexMatch, filtered_link[x])
+                            # if result:
+                                correct_count = 0
+                                percentage = 80
 
-                        if products_with[i].lower() in split_link2[x]:
-                            correct_count = 0
-                            res = products_with[i].lower().split("-")
-                            res2 = split_link2[x].split("-")
+                                product_in_database = products_with[i].lower().split("-")
+                                found_product_url = filtered_link[x].split("-")
 
-                            for remo in range(len(res2)):
-                                if 'BLK' in res2[remo] or 'PAK' in res2[remo]:
-                                    del res2[remo]
+                                # for remo in range(len(found_product_url)):
+                                #     if 'BLK' in found_product_url[remo] or 'PAK' in found_product_url[remo] or 'TRL' in found_product_url[remo]:
+                                #         del found_product_url[remo]
 
-                            for p in range(len(res)):
-                                for p2 in range(len(res2)):
-                                    if res[p] in res2[p2]:
-                                        correct_count += 1
-                                        if (correct_count / len(res)) * 100 > 80:
-                                            if (len(res) / len(res2)) * 100 > 80:
-                                                to_scrape.add(read_links[j])
-                                            break
+                                for p in range(len(product_in_database)):
+                                    for p2 in range(len(found_product_url)):
+                                        if product_in_database[p] in found_product_url[p2]:
+                                            # if product_in_database[p] == found_product_url[p2]:
+                                            correct_count += 1
+                                            if correct_count == len(product_in_database):
+                                                if has_numbers(found_product_url[-1]):
+                                                    percentage = 72
+                                                if (len(product_in_database) / len(found_product_url)) * 100 > percentage:
+                                                    to_scrape.add(read_links[j])
+                                                    break
+                                                break
+            i += 1
+            # else:
+            #     not_found.add(products[i] + " not found")
 
     if len(to_scrape) > 0:
-
         for product_url in to_scrape:
             print(product_url)
     else:
@@ -320,14 +356,13 @@ def main():
                 end_time = datetime.now()
                 print('Duration: {}'.format(end_time - start_time))
 
-                find_product_in_urls()
+                find_product_in_urls(first_url)
             except:
                 print("link is not valid")
             finally:
                 main()
 
         if enter_url == "":
-            find_product_in_urls()
             sys.exit()
     except ValueError:
         sys.exit()
@@ -337,4 +372,5 @@ def main():
     END PROGRAM
 '''
 
-main()
+# main()
+find_product_in_urls("https://www.jumbo.com/producten")
