@@ -6,7 +6,7 @@ import bson.json_util as json_util
 
 myclient = pymongo.MongoClient(os.environ.get('db_host'))
 mydb = myclient[os.environ.get("db")]
-mycol = mydb["brands"]
+mycol = mydb["retailers"]
 
 def lambda_handler(event, context):
     mydoc = mycol.find()

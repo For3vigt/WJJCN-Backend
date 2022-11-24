@@ -5,6 +5,7 @@ import os
 import pymongo
 import bson.json_util as json_util
 import hashlib
+import datetime
 
 
 myclient = pymongo.MongoClient(os.environ.get('db_host'))
@@ -12,6 +13,12 @@ mydb = myclient[os.environ.get("db")]
 mycol = mydb["user"]
 
 def lambda_handler(event, context):
+    if event.get('password', None) == None:
+        return {
+            'statuscode': 400,
+            'body': json.dumps('password is not defined!')
+        }
+    
     mydoc = mycol.find()
     json_result = json.loads(json_util.dumps(mydoc))
 
@@ -27,7 +34,9 @@ def lambda_handler(event, context):
     if (hashed_password_from_website == hashed_password_from_database):
         # make JWT with secret in os.environ.get("SECRET_KEY") return JWT
         token = jwt.encode({
-            'ID': '1'
+            'id': '1',
+            'date': datetime.datetime.now().strftime("%m-%d-%Y"), 
+            'hashed_password': hashed_password_from_database
         }, 
         os.environ.get("JWT_SECRET"), 
         algorithm='HS256')
