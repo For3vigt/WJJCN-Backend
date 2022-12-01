@@ -16,6 +16,7 @@ const insert = dataAlg.map((data) => {
         : ObjectId("63762d52f2c01e731408394f"),
     retailer: ObjectId("63762a7bf2c01e7314083935"),
     name: data.Title,
+    product_url: "",
     product_brand: {
       brand: data.Brand,
       title: data.Title,
