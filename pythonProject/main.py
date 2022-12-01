@@ -20,45 +20,45 @@ brands = []
 '''
 # The code below connects to the database and receives all brands, so the products and their correct data can be
 # compared. If something goes wrong with connecting to the database, it will stop the code and retry when the user tells it to.
-def connectToDatabaseAndGetBrands():
-    global timeout_counter
-
-    timeout_retry = 15
-    request_timeout_in_seconds = 5
-
-    counter = timeout_counter
-
-    if counter != timeout_retry:
-        try:
-            client = pymongo.MongoClient("mongodb+srv://wjjcn:Sl33fAQiLusKGsx8@woc.amjwpqs.mongodb.net/", tlsCAFile=ca, connectTimeoutMS=5000)
-
-            with client:
-                db = client.wjjcn
-                e = db.products.find()
-
-                for item in e:
-                    brands.append(item)
-
-            if brands:
-                return brands
-
-            connectToDatabaseAndGetBrands()
-        except KeyboardInterrupt:
-                sys.exit()
-        except:
-            print("Could not connect to database. Please check your internet connection.")
-            counter += 1
-            timeout_counter = counter
-            connectToDatabaseAndGetBrands()
-    else:
-        pause_and_resume_script()
-        timeout_counter = 0
-        connectToDatabaseAndGetBrands()
-
-        if brands:
-            return brands
-
-        connectToDatabaseAndGetBrands()
+# def connectToDatabaseAndGetBrands():
+#     global timeout_counter
+#
+#     timeout_retry = 15
+#     request_timeout_in_seconds = 5
+#
+#     counter = timeout_counter
+#
+#     if counter != timeout_retry:
+#         try:
+#             client = pymongo.MongoClient("mongodb+srv://wjjcn:Sl33fAQiLusKGsx8@woc.amjwpqs.mongodb.net/", tlsCAFile=ca, connectTimeoutMS=5000)
+#
+#             with client:
+#                 db = client.wjjcn
+#                 e = db.products.find()
+#
+#                 for item in e:
+#                     brands.append(item)
+#
+#             if brands:
+#                 return brands
+#
+#             connectToDatabaseAndGetBrands()
+#         except KeyboardInterrupt:
+#                 sys.exit()
+#         except:
+#             print("Could not connect to database. Please check your internet connection.")
+#             counter += 1
+#             timeout_counter = counter
+#             connectToDatabaseAndGetBrands()
+#     else:
+#         pause_and_resume_script()
+#         timeout_counter = 0
+#         connectToDatabaseAndGetBrands()
+#
+#         if brands:
+#             return brands
+#
+#         connectToDatabaseAndGetBrands()
 
 def pushToDatabase(productId, body):
     global timeout_counter
@@ -339,11 +339,11 @@ def compareTexts(textToCheck, correctText):
 
 # The below function goes through all items it should find, ex. title, description etc. and compares the correct text
 # like title to the found text. It compares if the correct text is somewhere in the found text.
-def checkCharacterList(characterList, brandItem):
+def checkCharacterList(characterList, product):
     correctItems = []
     correctItemsResult = []
     # a list based off of the layout of the received correct item is created to put the found results into.
-    for key, value in brandItem["product_brand"].items():
+    for key, value in product["product_brand"].items():
         correctItems.append(value)
         correctItemsResult.append([])
 
@@ -376,11 +376,11 @@ def checkCharacterList(characterList, brandItem):
     return correctItemsResult
 
 
-def checkCharacterListForMostLikely(characterList, brandItem):
+def checkCharacterListForMostLikely(characterList, product):
     correctItems = []
     correctItemsResult = []
     # a list based off of the layout of the received correct item is created to put the found results into.
-    for key, value in brandItem["product_brand"].items():
+    for key, value in product["product_brand"].items():
         correctItems.append(value)
         correctItemsResult.append([])
 
@@ -413,14 +413,14 @@ def checkCharacterListForMostLikely(characterList, brandItem):
     return correctItemsResult
 
 
-def main(brandItem):
+def main(product, url):
     tagArray = []
 
     jsonKeys = []
     correctItems = []
     correctItemsResult = []
     # The method below creates a multidimensional array based on the contents of product_brand
-    for key, value in brandItem["product_brand"].items():
+    for key, value in product["product_brand"].items():
         jsonKeys.append(key)
         correctItems.append(value)
         if not isinstance(value, list):
@@ -430,10 +430,6 @@ def main(brandItem):
             for i in range(len(value)):
                 correctItemsResult[len(correctItemsResult) - 1].append([])
 
-    # In below text a method gets called to retrieve the html via a soup object from a given link
-    url = "https://www.jumbo.com/producten/red-bull-energy-drink-504874BLK" #jumbo bull 1 x 250ml
-    # url = "https://www.ah.nl/producten/product/wi195821/red-bull-energy-drink"  #Albert Heijn red bull 1 x 250ml
-    # url = "https://www.jumbo.com/producten/red-bull-energy-drink-24-pack-250ml-504874TRL"
     soup = getPage(url)
 
     # For all tags containing text like span, paragraph, h1, list items etc. an array per tag is created to put all found text into.
@@ -486,9 +482,9 @@ def main(brandItem):
     for i in range(len(tagArray)):
         tag = tagArray[i]
         if correctItemsResult == []:
-            correctItemsResult = checkCharacterList(tag, brandItem)
+            correctItemsResult = checkCharacterList(tag, product)
         else:
-            tempResult = checkCharacterList(tag, brandItem)
+            tempResult = checkCharacterList(tag, product)
             for i in range(len(correctItems)):
                 if not isinstance(correctItems[i], list):
                     correctItemsResult[i] = correctItemsResult[i] + tempResult[i]
@@ -500,9 +496,9 @@ def main(brandItem):
     for i in range(len(tagArray)):
         tag = tagArray[i]
         if correctItemsResult == []:
-            correctItemsResult = checkCharacterList(tag, brandItem)
+            correctItemsResult = checkCharacterList(tag, product)
         else:
-            tempResult = checkCharacterList(tag, brandItem)
+            tempResult = checkCharacterList(tag, product)
             for i in range(len(correctItems)):
                 if not correctItemsResult[i]:
                     if not isinstance(correctItems[i], list):
@@ -547,18 +543,14 @@ def main(brandItem):
     historyObject = {
         "scrape_date": today,
         "score": score,
-        "product_brand": brandItem["product_brand"],
+        "product_brand": product["product_brand"],
         "product_scraped": foundResult
     }
-    pushToDatabase(brandItem["_id"], historyObject)
+    pushToDatabase(product["_id"], historyObject)
 
 
 if __name__ == "__main__":
-    connectToDatabaseAndGetBrands()
-
     # main(brands[22]) #Jumbo red bull 1x 250ml
     # main(brands[0]) #Alberth Heijn red bull 1x 250ml
     # main(brands[30]) #Alberth Heijn red bull 1x 250ml correct
     main(brands[31])  #Jumbo red bull 1x 250ml correct
-    # main(brands[18]) #
-    # main("test")
