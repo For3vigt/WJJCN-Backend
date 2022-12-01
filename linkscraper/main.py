@@ -9,20 +9,23 @@ import sys
 import re
 import certifi
 
+import compare
+
 ca = certifi.where()
 
 brands = []
 products = []
+product_urls = []
 complete_product = []
 internal_urls = set()
 read_links = []
 to_scrape = set()
 not_found = set()
 products_with = []
-products_with2 = []
 retailers = []
 brands_with = []
 
+error_object_id = ''
 domain_url = ""
 
 first_url = ""
@@ -31,6 +34,17 @@ timeout_counter = 0
 
 timeout_retry = 15
 request_timeout_in_seconds = 5
+
+
+class PrintColors:
+    INFO = '\033[94m'
+    OK = '\033[92m'
+    WARNING = '\033[93m'
+    FAIL = '\033[91m'
+    ENDC = '\033[0m'
+    BOLD = '\033[1m'
+    UNDERLINE = '\033[4m'
+
 
 ''' 
     WEBCRAWLER
@@ -80,7 +94,7 @@ def pause_and_resume_script():
             res = input()
             if res == "1":
                 timeout_counter = 0
-                print("resuming code")
+                print(PrintColors.INFO + "[INFO]" + PrintColors.ENDC + " resuming code")
                 run = False
             if res == "2":
                 sys.exit()
@@ -104,7 +118,8 @@ def get_url(url):
             else:
                 get_url(url)
         except:
-            print("An error occurred. Please check your internet connection.")
+            error_handler(error_object_id, "[ERROR] An error occurred. Please check your internet connection.", 'link_crawling')
+            print(PrintColors.FAIL + "[ERROR]" + PrintColors.ENDC + " An error occurred. Please check your internet connection.")
             counter += 1
             timeout_counter = counter
             get_url(url)
@@ -174,7 +189,8 @@ def get_all_website_links(url):
                     internal_urls.add(href)
                 continue
         except AttributeError:
-            print("Could not crawl the given URL.")
+            error_handler(error_object_id, "[ERROR] Could not crawl the given URL.", 'link_crawling')
+            print(PrintColors.FAIL + "[ERROR]" + PrintColors.ENDC + " Could not crawl the given URL.")
     return urls
 
 
@@ -199,7 +215,7 @@ def crawl(url):
 
     links = get_all_website_links(url)
 
-    print(f"[*] Crawling: {url}")
+    print(f"{PrintColors.INFO}[INFO]{PrintColors.ENDC} Crawling: {url} ")
 
     for link in links:
         # if total_urls_visited > 200:
@@ -220,6 +236,8 @@ def has_numbers(inputString):
 
 
 def find_product_in_urls(url):
+    start_time = datetime.now()
+
     client = pymongo.MongoClient("mongodb+srv://wjjcn:Sl33fAQiLusKGsx8@woc.amjwpqs.mongodb.net/", tlsCAFile=ca)
 
     selected_retailer = ""
@@ -228,36 +246,41 @@ def find_product_in_urls(url):
 
     with client:
         db = client.wjjcn
-        b = db.retailers.find()
+        retailer_table = db.retailers.find()
 
-        for item in b:
-            if item['base_url'] in url:
-                selected_retailer = item['_id']
-                selected_retailer_url = item['base_url']
-                retailers.append(item['base_url'])
+        for retailer in retailer_table:
+            if retailer['base_url'] in url:
+                selected_retailer = retailer['_id']
+                selected_retailer_url = retailer['base_url']
+                retailers.append(retailer['base_url'])
 
-        e = db.products.find({"retailer": selected_retailer})
+        products_per_retailer_table = db.products.find({"retailer": selected_retailer})
 
-        for item in e:
-            if item['retailer'] == selected_retailer:
-                brand_temp_list.append(item['brand'])
-                item['product'] = re.sub(' +', '-', item['product'])
-                item['product'] = re.sub('-+', '-', item['product'])
-                products.append(item['product'])
-                complete_product.append(item)
+        for product in products_per_retailer_table:
+            if product['retailer'] == selected_retailer:
+                brand_temp_list.append(product['brand'])
+                product['name'] = re.sub(' +', '-', product['name'])
+                product['name'] = re.sub('-+', '-', product['name'])
+                product_urls.append(product['product_url'])
+                products.append(product['name'])
+                complete_product.append(product)
 
-        a = db.brands.find()
+        brands_table = db.brands.find()
 
-        for brand in a:
-            for bra in brand_temp_list:
-                if brand["_id"] == bra:
+        for brand in brands_table:
+            for temp_brand in brand_temp_list:
+                if brand["_id"] == temp_brand:
                     brands.append(brand["name"])
+
+    client.close()
 
     # with open('linksjumbo-com.txt') as f:
     #     for line in f.readlines():
     #         read_links.append(line.strip())
     #
     #     f.close()
+
+    compare_once = False
 
     for link in internal_urls:
         read_links.append(link)
@@ -268,13 +291,14 @@ def find_product_in_urls(url):
             if check_if_url_starts_with_domain(selected_retailer_url, read_links[j]):
                 split_link = read_links[j].split("/")
                 filtered_link = list(filter(None, split_link))
+                compare_once = False
 
                 for x in range(len(filtered_link)):
 
-                    for b in range(len(brands)):
-                        brands_with.append(brands[b].replace(" ", "-"))
+                    for retailer_table in range(len(brands)):
+                        brands_with.append(brands[retailer_table].replace(" ", "-"))
 
-                        if brands_with[b].lower() in filtered_link[x]:
+                        if brands_with[retailer_table].lower() in filtered_link[x]:
                             correct_count = 0
                             percentage = 86
 
@@ -296,27 +320,128 @@ def find_product_in_urls(url):
                                                 if has_numbers(found_product_url[-1]):
                                                     percentage = 76
                                                 if (len(product_in_database) / len(found_product_url)) * 100 > percentage:
-                                                    to_scrape.add("Product: " + products[i] + "\nURL: " + read_links[j])
-                                                    # send complete_product and url to other script
-                                                    break
+                                                    if not compare_once:
+                                                        if product_urls[i] == read_links[j]:
+                                                            to_scrape.add("Product: " + products[i] + "\nURL: " + product_urls[i])
+                                                            compare.main(complete_product[i], product_urls[i])
+                                                            compare_once = True
+                                                            break
+                                                        else:
+                                                            update_product_url(complete_product[i]['_id'], read_links[j])
+                                                            to_scrape.add("Product: " + products[i] + "\nURL: " + read_links[j])
+                                                            compare.main(complete_product[i], read_links[j])
+                                                            compare_once = True
+                                                            break
                                                 break
             i += 1
 
     if len(to_scrape) > 0:
         for product_url in to_scrape:
-            print(product_url)
+            print(PrintColors.INFO + "[INFO]" + PrintColors.ENDC + " " + product_url)
+
+        end_time = datetime.now()
+        print(PrintColors.INFO + '[INFO]' + PrintColors.ENDC + ' Link comparer duration: {}'.format(end_time - start_time))
     else:
-        print("No products found in the scraped URL's...")
+        print(PrintColors.WARNING + "[WARN]" + PrintColors.ENDC + " No products found in the scraped URL's...")
+        end_time = datetime.now()
+        print(PrintColors.INFO + '[INFO]' + PrintColors.ENDC + ' Link comparer duration: {}'.format(end_time - start_time))
 
 
+def update_product_url(product_id, product_url):
+    client = pymongo.MongoClient("mongodb+srv://wjjcn:Sl33fAQiLusKGsx8@woc.amjwpqs.mongodb.net/", tlsCAFile=ca)
+
+    with client:
+        db = client.wjjcn
+        products_table = db.products
+
+        query = {"_id": product_id}
+        values_to_update = {"$set": {"product_url": product_url}}
+
+        products_table.update_one(query, values_to_update)
+
+    client.close()
+
+
+def get_url_from_database():
+    client = pymongo.MongoClient("mongodb+srv://wjjcn:Sl33fAQiLusKGsx8@woc.amjwpqs.mongodb.net/", tlsCAFile=ca)
+
+    scrape_url = []
+    retailer_id = ''
+    global error_object_id
+
+    with client:
+        db = client.wjjcn
+        retailers_table = db.retailers.find()
+
+        for retailer in retailers_table:
+            if retailer["scrape"] == "true":
+                retailer_id = retailer["_id"]
+                scrape_url.append(retailer["url_to_scrape"])
+            else:
+                print(PrintColors.WARNING + "[WARN]" + PrintColors.ENDC + " Retailer '" + retailer["name"] + "' is disabled for scraping.")
+
+            logs_table = db.logs
+
+            new_log = {
+                'date_run': str(datetime.now().date()),
+                'steps': {
+                    'link_crawling': {
+                        'status': True,
+                        'error': ''
+                    },
+                    'link_check': {
+                        'status': True,
+                        'error': ''
+                    },
+                    'product_fetch_compare': {
+                        'status': True,
+                        'error': ''
+                    },
+                    'save_to_database': {
+                        'status': True,
+                        'error': ''
+                    }
+                },
+                'retailer': retailer_id
+            }
+
+            get_error_object_id = logs_table.insert_one(new_log)
+            error_object_id = get_error_object_id.inserted_id
+
+    client.close()
+
+    return scrape_url
+
+
+def error_handler(error_id, message, step):
+    client = pymongo.MongoClient("mongodb+srv://wjjcn:Sl33fAQiLusKGsx8@woc.amjwpqs.mongodb.net/", tlsCAFile=ca)
+
+    with client:
+        db = client.wjjcn
+        update_logs_table = db.logs
+
+        query = {"_id": error_id}
+        values_to_update = {"$set": {'steps.'+step: {
+            "status": False,
+            "error": message
+        }}}
+
+        update_logs_table.update_one(query, values_to_update)
+
+    client.close()
 
 
 def clear_lists():
+    brands.clear()
+    products.clear()
+    product_urls.clear()
+    complete_product.clear()
     internal_urls.clear()
     read_links.clear()
     to_scrape.clear()
     not_found.clear()
     products_with.clear()
+    retailers.clear()
     brands_with.clear()
 
 
@@ -327,45 +452,49 @@ def clear_lists():
 
 def main():
     try:
-        print("-- Enter the URL you want to crawl --")
-        clear_lists()
-        enter_url = input()
+        for scrape_url in get_url_from_database():
+            if scrape_url != "":
+                try:
+                    clear_lists()
 
-        if enter_url != "":
-            try:
+                    first_url = scrape_url
+                    start_time = datetime.now()
 
-                first_url = enter_url
-                start_time = datetime.now()
+                    crawl(first_url)
 
-                crawl(first_url)
+                    with open('links' + domain_name + '.txt', 'w') as f:
+                        for link in internal_urls:
+                            # print("found link: ", link)
+                            f.write(link)
+                            f.write('\n')
 
-                print("[/---------------------------/]")
-                print(len(internal_urls))
-                print("[/---------------------------/]")
+                    f.close()
 
-                with open('links' + domain_name + '.txt', 'w') as f:
-                    for link in internal_urls:
-                        print("found link: ", link)
-                        f.write(link)
-                        f.write('\n')
+                    print(PrintColors.INFO + "[INFO]" + PrintColors.ENDC + " Total links:", len(internal_urls))
 
-                f.close()
+                    end_time = datetime.now()
+                    print(PrintColors.INFO + '[INFO]' + PrintColors.ENDC + ' Duration: {}'.format(end_time - start_time))
 
-                print("[+] Total links:", len(internal_urls))
+                    find_product_in_urls(first_url)
+                except BaseException as e:
+                    error_handler(error_object_id, "[ERROR] link is not valid. Exception: " + str(e), 'link_crawling')
+                    print(PrintColors.FAIL + "[ERROR]" + PrintColors.ENDC + " link is not valid. Exception: " + str(e))
+            else:
+                sys.exit()
+    except ValueError as e:
+        sys.exit(e)
+    finally:
+        print(PrintColors.WARNING + "[SYSTEM]" + PrintColors.ENDC + " Do you want to run the script again? y/n")
+        key_input = input()
 
-                end_time = datetime.now()
-                print('Duration: {}'.format(end_time - start_time))
-
-                find_product_in_urls(first_url)
-            except:
-                print("link is not valid")
-            finally:
-                main()
-
-        if enter_url == "":
+        if key_input == "y":
+            main()
+        elif key_input == "n":
+            print(PrintColors.WARNING + "[SYSTEM]" + PrintColors.ENDC + " Goodbye")
             sys.exit()
-    except ValueError:
-        sys.exit()
+        else:
+            print(PrintColors.WARNING + "[SYSTEM]" + PrintColors.ENDC + " Goodbye")
+            sys.exit()
 
 
 ''' 
