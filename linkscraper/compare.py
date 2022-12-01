@@ -14,10 +14,39 @@ ca = certifi.where()
 
 timeout_counter = 0
 brands = []
+error_object_id = ''
 
 '''
     DATABASE
 '''
+
+
+class PrintColors:
+    INFO = '\033[94m'
+    OK = '\033[92m'
+    WARNING = '\033[93m'
+    FAIL = '\033[91m'
+    ENDC = '\033[0m'
+    BOLD = '\033[1m'
+    UNDERLINE = '\033[4m'
+
+
+def error_handler(error_id, message, step):
+    client = pymongo.MongoClient("mongodb+srv://wjjcn:Sl33fAQiLusKGsx8@woc.amjwpqs.mongodb.net/", tlsCAFile=ca)
+
+    with client:
+        db = client.wjjcn
+        update_logs_table = db.logs
+
+        query = {"_id": error_id}
+        values_to_update = {"$set": {'steps.' + step: {
+            "status": False,
+            "error": message
+        }}}
+
+        update_logs_table.update_one(query, values_to_update)
+
+    client.close()
 
 
 # The code below connects to the database and receives all brands, so the products and their correct data can be
@@ -85,7 +114,8 @@ def pushToDatabase(productId, body):
         except KeyboardInterrupt:
             sys.exit()
         except:
-            print("Could not connect to database. Please check your internet connection.")
+            print(PrintColors.FAIL + "[ERROR]" + PrintColors.ENDC + " Could not connect to database. Please check your internet connection.")
+            error_handler(error_object_id, "[ERROR] Could not connect to database. Please check your internet connection.", 'save_to_database')
             counter += 1
             timeout_counter = counter
             pushToDatabase(productId, body)
@@ -161,7 +191,8 @@ def getPage(url):
         except KeyboardInterrupt:
             sys.exit()
         except:
-            print("An error occurred. Please check your internet connection.")
+            print(PrintColors.FAIL + "[ERROR]" + PrintColors.ENDC + " An error occurred. Please check your internet connection.")
+            error_handler(error_object_id, "[ERROR] An error occurred. Please check your internet connection.", 'product_fetch_compare')
             counter += 1
             timeout_counter = counter
             getPage(url)
@@ -418,7 +449,9 @@ def checkCharacterListForMostLikely(characterList, product):
     return correctItemsResult
 
 
-def main(product, url):
+def main(product, url, error_objectid):
+    global error_object_id
+    error_object_id = error_objectid
     tagArray = []
 
     jsonKeys = []
@@ -553,9 +586,8 @@ def main(product, url):
     }
     pushToDatabase(product["_id"], historyObject)
 
-
 # if __name__ == "__main__":
-    # main(brands[22]) #Jumbo red bull 1x 250ml
-    # main(brands[0]) #Alberth Heijn red bull 1x 250ml
-    # main(brands[30]) #Alberth Heijn red bull 1x 250ml correct
-    # main(brands[31])  # Jumbo red bull 1x 250ml correct
+# main(brands[22]) #Jumbo red bull 1x 250ml
+# main(brands[0]) #Alberth Heijn red bull 1x 250ml
+# main(brands[30]) #Alberth Heijn red bull 1x 250ml correct
+# main(brands[31])  # Jumbo red bull 1x 250ml correct

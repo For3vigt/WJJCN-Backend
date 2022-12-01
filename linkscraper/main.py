@@ -323,13 +323,13 @@ def find_product_in_urls(url):
                                                     if not compare_once:
                                                         if product_urls[i] == read_links[j]:
                                                             to_scrape.add("Product: " + products[i] + "\nURL: " + product_urls[i])
-                                                            compare.main(complete_product[i], product_urls[i])
+                                                            compare.main(complete_product[i], product_urls[i], error_object_id)
                                                             compare_once = True
                                                             break
                                                         else:
                                                             update_product_url(complete_product[i]['_id'], read_links[j])
                                                             to_scrape.add("Product: " + products[i] + "\nURL: " + read_links[j])
-                                                            compare.main(complete_product[i], read_links[j])
+                                                            compare.main(complete_product[i], read_links[j], error_object_id)
                                                             compare_once = True
                                                             break
                                                 break
@@ -366,7 +366,6 @@ def get_url_from_database():
     client = pymongo.MongoClient("mongodb+srv://wjjcn:Sl33fAQiLusKGsx8@woc.amjwpqs.mongodb.net/", tlsCAFile=ca)
 
     scrape_url = []
-    retailer_id = ''
     global error_object_id
     error_object_id = ''
 
@@ -414,6 +413,18 @@ def get_url_from_database():
     return scrape_url
 
 
+def check_date_runned():
+    client = pymongo.MongoClient("mongodb+srv://wjjcn:Sl33fAQiLusKGsx8@woc.amjwpqs.mongodb.net/", tlsCAFile=ca)
+
+    with client:
+        db = client.wjjcn
+        logs_table = db.logs.find()
+
+        for logs in logs_table:
+            if logs['date_run'] == str(datetime.now().date()):
+                return True
+
+
 def error_handler(error_id, message, step):
     client = pymongo.MongoClient("mongodb+srv://wjjcn:Sl33fAQiLusKGsx8@woc.amjwpqs.mongodb.net/", tlsCAFile=ca)
 
@@ -422,7 +433,7 @@ def error_handler(error_id, message, step):
         update_logs_table = db.logs
 
         query = {"_id": error_id}
-        values_to_update = {"$set": {'steps.'+step: {
+        values_to_update = {"$set": {'steps.' + step: {
             "status": False,
             "error": message
         }}}
@@ -455,31 +466,43 @@ def main():
     try:
         for scrape_url in get_url_from_database():
             if scrape_url != "":
-                try:
-                    clear_lists()
+                if check_date_runned():
+                    print(PrintColors.WARNING + "[SYSTEM]" + PrintColors.ENDC + " The scraper as already completed once with this retailer today. Do you want to continue? y/n")
+                    check_date = input()
 
-                    first_url = scrape_url
-                    start_time = datetime.now()
+                    if check_date == "y":
+                        try:
+                            clear_lists()
 
-                    crawl(first_url)
+                            first_url = scrape_url
+                            start_time = datetime.now()
 
-                    with open('links' + domain_name + '.txt', 'w') as f:
-                        for link in internal_urls:
-                            # print("found link: ", link)
-                            f.write(link)
-                            f.write('\n')
+                            crawl(first_url)
 
-                    f.close()
+                            with open('links' + domain_name + '.txt', 'w') as f:
+                                for link in internal_urls:
+                                    # print("found link: ", link)
+                                    f.write(link)
+                                    f.write('\n')
 
-                    print(PrintColors.INFO + "[INFO]" + PrintColors.ENDC + " Total links:", len(internal_urls))
+                            f.close()
 
-                    end_time = datetime.now()
-                    print(PrintColors.INFO + '[INFO]' + PrintColors.ENDC + ' Duration: {}'.format(end_time - start_time))
+                            print(PrintColors.INFO + "[INFO]" + PrintColors.ENDC + " Total links:", len(internal_urls))
 
-                    find_product_in_urls(first_url)
-                except BaseException as e:
-                    error_handler(error_object_id, "[ERROR] link is not valid. Exception: " + str(e), 'link_crawling')
-                    print(PrintColors.FAIL + "[ERROR]" + PrintColors.ENDC + " link is not valid. Exception: " + str(e))
+                            end_time = datetime.now()
+                            print(PrintColors.INFO + '[INFO]' + PrintColors.ENDC + ' Duration: {}'.format(end_time - start_time))
+
+                            find_product_in_urls(first_url)
+                        except BaseException as e:
+                            error_handler(error_object_id, "[ERROR] link is not valid. Exception: " + str(e), 'link_crawling')
+                            print(PrintColors.FAIL + "[ERROR]" + PrintColors.ENDC + " link is not valid. Exception: " + str(e))
+
+                    elif check_date == "n":
+                        print(PrintColors.WARNING + "[SYSTEM]" + PrintColors.ENDC + " Goodbye")
+                        sys.exit()
+                    else:
+                        print(PrintColors.WARNING + "[SYSTEM]" + PrintColors.ENDC + " Goodbye")
+                        sys.exit()
             else:
                 sys.exit()
     except ValueError as e:
