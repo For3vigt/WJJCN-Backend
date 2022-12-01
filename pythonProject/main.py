@@ -1,8 +1,10 @@
 import math
 import sys
+from datetime import date
 
 import numpy
 from bs4 import BeautifulSoup
+from bson.objectid import ObjectId
 import re
 import pymongo
 import requests
@@ -57,6 +59,43 @@ def connectToDatabaseAndGetBrands():
             return brands
 
         connectToDatabaseAndGetBrands()
+
+def pushToDatabase(productId, body):
+    global timeout_counter
+
+    timeout_retry = 15
+    request_timeout_in_seconds = 5
+
+    counter = timeout_counter
+
+    if counter != timeout_retry:
+        try:
+            client = pymongo.MongoClient("mongodb+srv://wjjcn:Sl33fAQiLusKGsx8@woc.amjwpqs.mongodb.net/",
+                                         tlsCAFile=ca, connectTimeoutMS=5000)
+
+            with client:
+                db = client.wjjcn
+
+                db.products.update_one({"_id": ObjectId(productId)}, {"$push": {"history": body}})
+
+                client.close()
+
+        except KeyboardInterrupt:
+            sys.exit()
+        except:
+            print("Could not connect to database. Please check your internet connection.")
+            counter += 1
+            timeout_counter = counter
+            pushToDatabase(productId, body)
+    else:
+        pause_and_resume_script()
+        timeout_counter = 0
+        pushToDatabase(productId, body)
+
+        if brands:
+            return brands
+
+        pushToDatabase(productId, body)
 '''
     END DATABASE
 '''
@@ -104,8 +143,7 @@ def getPage(url):
 
     html = requests
 
-    agent = {
-        "User-Agent": 'Mozilla/5.0 (Windows NT 6.3; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/59.0.3071.115 Safari/537.36'}
+    agent = {"User-Agent": 'Mozilla/5.0 (Windows NT 6.3; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/59.0.3071.115 Safari/537.36'}
     if counter != timeout_retry:
         try:
             html = requests.get(url, headers=agent, timeout=request_timeout_in_seconds).text
@@ -376,8 +414,6 @@ def checkCharacterListForMostLikely(characterList, brandItem):
 
 
 def main(brandItem):
-    print(brandItem["product_brand"])
-
     tagArray = []
 
     jsonKeys = []
@@ -395,8 +431,8 @@ def main(brandItem):
                 correctItemsResult[len(correctItemsResult) - 1].append([])
 
     # In below text a method gets called to retrieve the html via a soup object from a given link
-    # url = "https://www.jumbo.com/producten/red-bull-energy-drink-504874BLK" #jumbo bull 1 x 250ml
-    url = "https://www.ah.nl/producten/product/wi195821/red-bull-energy-drink"  #Albert Heijn red bull 1 x 250ml
+    url = "https://www.jumbo.com/producten/red-bull-energy-drink-504874BLK" #jumbo bull 1 x 250ml
+    # url = "https://www.ah.nl/producten/product/wi195821/red-bull-energy-drink"  #Albert Heijn red bull 1 x 250ml
     # url = "https://www.jumbo.com/producten/red-bull-energy-drink-24-pack-250ml-504874TRL"
     soup = getPage(url)
 
@@ -445,8 +481,6 @@ def main(brandItem):
     #
     # temptest = tryFindMostLikelyText(testTags[4], testcorrect[0])
 
-    # print(temptest)
-
     # A loop goes through all tags and checks if the correct text is found in the found text by calling a method,
     # if the correct text is found somewhere in the found text a list is returned.
     for i in range(len(tagArray)):
@@ -483,26 +517,48 @@ def main(brandItem):
         if not isinstance(correctItems[i], list):
             if correctItemsResult[i] != []:
                 tempArray = correctItemsResult[i]
-                print(jsonKeys[i] + " is: " + min(tempArray, key=len))
+                correctItemsResult[i] = min(tempArray, key=len)
             else:
                 correctItemsResult[i] = "Not found"
-                print(jsonKeys[i] + " is: " + correctItemsResult[i])
         else:
             for j in range(len(correctItems[i])):
                 if correctItemsResult[i][j] != []:
                     tempArray = correctItemsResult[i][j]
-                    print(jsonKeys[i] + " " + str(j) + " is: " + min(tempArray, key=len))
+                    correctItemsResult[i][j] = min(tempArray, key=len)
                 else:
                     correctItemsResult[i][j] = "Not found"
-                    print(jsonKeys[i] + " " + str(j) + " is: " + correctItemsResult[i][j])
+
+    # Add to database
+    today = date.today().strftime('%Y-%m-%d')
+    foundResult = {}
+    correctItemsCount = 0
+
+    for i in range(len(correctItemsResult)):
+        equal_to_scraped = False
+
+        if correctItemsResult[i] != "Not found":
+            equal_to_scraped = True
+            correctItemsCount += 1
+
+        foundResult[jsonKeys[i]] = {"text": correctItemsResult[i], "equal_to_scraped": equal_to_scraped}
+
+    score = round((correctItemsCount / len(correctItemsResult)) * 100)
+
+    historyObject = {
+        "scrape_date": today,
+        "score": score,
+        "product_brand": brandItem["product_brand"],
+        "product_scraped": foundResult
+    }
+    pushToDatabase(brandItem["_id"], historyObject)
 
 
 if __name__ == "__main__":
     connectToDatabaseAndGetBrands()
 
     # main(brands[22]) #Jumbo red bull 1x 250ml
-    # main(brands[4]) #Alberth Heijn red bull 1x 250ml
-    main(brands[30]) #Alberth Heijn red bull 1x 250ml correct
-    # main(brands[31])  #Jumbo red bull 1x 250ml correct
+    # main(brands[0]) #Alberth Heijn red bull 1x 250ml
+    # main(brands[30]) #Alberth Heijn red bull 1x 250ml correct
+    main(brands[31])  #Jumbo red bull 1x 250ml correct
     # main(brands[18]) #
     # main("test")
