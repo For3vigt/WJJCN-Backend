@@ -44,51 +44,7 @@ const insert = dataAlg.map((data) => {
       ],
     },
     history: [
-      {
-        scrape_date: "2022-11-10",
-        score: 81,
-        product_brand: {
-          productomschrijving: data.Productomschrijving,
-          inhoud: data.Inhoud,
-          Opco: data.Opco,
-          omschrijving: data["Omschrijving (max. 200 tekens)"]
-            .replace("\r", "")
-            .replace("\n", ""),
-          USP: [
-            data["USP/Bullet 1 (max. 75 tekens)"],
-            data["USP/ Bullet 2 (max. 75 tekens)"],
-            data["USP/Bullet 3 (max. 75 tekens)"],
-            data["USP/Bullet 4 (max. 75 tekens)"],
-          ],
-        },
-        product_scraped: {
-          productomschrijving: {
-            text: "",
-            equal_to_scraped: false,
-          },
-          inhoud: {
-            text: "",
-            equal_to_scraped: false,
-          },
-          Opco: {
-            text: "",
-            equal_to_scraped: false,
-          },
-          omschrijving: {
-            text: "",
-            equal_to_scraped: false,
-          },
-          USP: {
-            text: [
-              "",
-              "",
-              "",
-              "",
-            ],
-            equal_to_scraped: false,
-          },
-        },
-      },
+
     ],
   };
 });
