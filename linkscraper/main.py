@@ -368,6 +368,7 @@ def get_url_from_database():
     scrape_url = []
     retailer_id = ''
     global error_object_id
+    error_object_id = ''
 
     with client:
         db = client.wjjcn
@@ -377,36 +378,36 @@ def get_url_from_database():
             if retailer["scrape"] == "true":
                 retailer_id = retailer["_id"]
                 scrape_url.append(retailer["url_to_scrape"])
+
+                logs_table = db.logs
+
+                new_log = {
+                    'date_run': str(datetime.now().date()),
+                    'steps': {
+                        'link_crawling': {
+                            'status': True,
+                            'error': ''
+                        },
+                        'link_check': {
+                            'status': True,
+                            'error': ''
+                        },
+                        'product_fetch_compare': {
+                            'status': True,
+                            'error': ''
+                        },
+                        'save_to_database': {
+                            'status': True,
+                            'error': ''
+                        }
+                    },
+                    'retailer': retailer_id
+                }
+
+                get_error_object_id = logs_table.insert_one(new_log)
+                error_object_id = get_error_object_id.inserted_id
             else:
                 print(PrintColors.WARNING + "[WARN]" + PrintColors.ENDC + " Retailer '" + retailer["name"] + "' is disabled for scraping.")
-
-            logs_table = db.logs
-
-            new_log = {
-                'date_run': str(datetime.now().date()),
-                'steps': {
-                    'link_crawling': {
-                        'status': True,
-                        'error': ''
-                    },
-                    'link_check': {
-                        'status': True,
-                        'error': ''
-                    },
-                    'product_fetch_compare': {
-                        'status': True,
-                        'error': ''
-                    },
-                    'save_to_database': {
-                        'status': True,
-                        'error': ''
-                    }
-                },
-                'retailer': retailer_id
-            }
-
-            get_error_object_id = logs_table.insert_one(new_log)
-            error_object_id = get_error_object_id.inserted_id
 
     client.close()
 
