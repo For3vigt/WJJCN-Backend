@@ -288,6 +288,10 @@ def compareTexts(textToCheck, correctText):
                 if foundText[i] != correctTextSplit[i]:
                     return False
                 else:
+                    if fullFoundText:
+                        fullFoundText = fullFoundText + " " + foundText[i]
+                    else:
+                        fullFoundText = foundText[i]
                     correctTextFound = True
                     exceededLastIndex = True
 
@@ -306,6 +310,7 @@ def compareTexts(textToCheck, correctText):
                 exceededLastIndex = True
 
     if correctTextFound:
+        # return fullFoundText
         return textToCheck
     else:
         return False
@@ -387,16 +392,20 @@ def main(product, url):
     jsonKeys = []
     correctItems = []
     correctItemsResult = []
+    mostLikelyItemsResult = []
     # The method below creates a multidimensional array based on the contents of product_brand
     for key, value in product["product_brand"].items():
         jsonKeys.append(key)
         correctItems.append(value)
         if not isinstance(value, list):
             correctItemsResult.append([])
+            mostLikelyItemsResult.append([])
         else:
             correctItemsResult.append([])
+            mostLikelyItemsResult.append([])
             for i in range(len(value)):
                 correctItemsResult[len(correctItemsResult) - 1].append([])
+                mostLikelyItemsResult[len(mostLikelyItemsResult) - 1].append([])
 
     soup = getPage(url)
 
@@ -463,18 +472,18 @@ def main(product, url):
 
     for i in range(len(tagArray)):
         tag = tagArray[i]
-        if correctItemsResult == []:
-            correctItemsResult = checkTextFromWebsite(tag, product)
+        if mostLikelyItemsResult == []:
+            mostLikelyItemsResult = checkTextFromWebsite(tag, product)
         else:
             tempResult = checkTextFromWebsite(tag, product)
             for i in range(len(correctItems)):
                 if not correctItemsResult[i] or not correctItemsResult[i][0]:
                     if not isinstance(correctItems[i], list):
-                        correctItemsResult[i] = correctItemsResult[i] + tempResult[i]
+                        mostLikelyItemsResult[i] = mostLikelyItemsResult[i] + tempResult[i]
                     else:
                         for j in range(len(correctItems[i])):
                             if tempResult[i][j] != []:
-                                correctItemsResult[i][j] = correctItemsResult[i][j] + tempResult[i][j]
+                                mostLikelyItemsResult[i][j] = mostLikelyItemsResult[i][j] + tempResult[i][j]
 
     # After going through all tag items for all attributes like title, description etc. the shortest match is found and returned.
     for i in range(len(correctItems)):
@@ -503,6 +512,12 @@ def main(product, url):
         if correctItemsResult[i] != "Not found":
             equal_to_scraped = True
             correctItemsCount += 1
+        if correctItemsResult[i] == "Not found" and mostLikelyItemsResult[i] != []:
+            correctItemsResult[i] = min(mostLikelyItemsResult[i], key=len)
+            if isinstance(correctItemsResult[i], list):
+                for i in range(len(correctItemsResult[i])):
+                    if correctItemsResult[i][j] == "Not found" and mostLikelyItemsResult[i][j] != []:
+                        correctItemsResult[i][j] = min(mostLikelyItemsResult[i][j], key=len)
 
         foundResult[jsonKeys[i]] = {"text": correctItemsResult[i], "equal_to_scraped": equal_to_scraped}
 
