@@ -20,45 +20,45 @@ brands = []
 '''
 # The code below connects to the database and receives all brands, so the products and their correct data can be
 # compared. If something goes wrong with connecting to the database, it will stop the code and retry when the user tells it to.
-def connectToDatabaseAndGetBrands():
-    global timeout_counter
-
-    timeout_retry = 15
-    request_timeout_in_seconds = 5
-
-    counter = timeout_counter
-
-    if counter != timeout_retry:
-        try:
-            client = pymongo.MongoClient("mongodb+srv://wjjcn:Sl33fAQiLusKGsx8@woc.amjwpqs.mongodb.net/", tlsCAFile=ca, connectTimeoutMS=5000)
-
-            with client:
-                db = client.wjjcn
-                e = db.products.find()
-
-                for item in e:
-                    brands.append(item)
-
-            if brands:
-                return brands
-
-            connectToDatabaseAndGetBrands()
-        except KeyboardInterrupt:
-                sys.exit()
-        except:
-            print("Could not connect to database. Please check your internet connection.")
-            counter += 1
-            timeout_counter = counter
-            connectToDatabaseAndGetBrands()
-    else:
-        pause_and_resume_script()
-        timeout_counter = 0
-        connectToDatabaseAndGetBrands()
-
-        if brands:
-            return brands
-
-        connectToDatabaseAndGetBrands()
+# def connectToDatabaseAndGetBrands():
+#     global timeout_counter
+#
+#     timeout_retry = 15
+#     request_timeout_in_seconds = 5
+#
+#     counter = timeout_counter
+#
+#     if counter != timeout_retry:
+#         try:
+#             client = pymongo.MongoClient("mongodb+srv://wjjcn:Sl33fAQiLusKGsx8@woc.amjwpqs.mongodb.net/", tlsCAFile=ca, connectTimeoutMS=5000)
+#
+#             with client:
+#                 db = client.wjjcn
+#                 e = db.products.find()
+#
+#                 for item in e:
+#                     brands.append(item)
+#
+#             if brands:
+#                 return brands
+#
+#             connectToDatabaseAndGetBrands()
+#         except KeyboardInterrupt:
+#                 sys.exit()
+#         except:
+#             print("Could not connect to database. Please check your internet connection.")
+#             counter += 1
+#             timeout_counter = counter
+#             connectToDatabaseAndGetBrands()
+#     else:
+#         pause_and_resume_script()
+#         timeout_counter = 0
+#         connectToDatabaseAndGetBrands()
+#
+#         if brands:
+#             return brands
+#
+#         connectToDatabaseAndGetBrands()
 
 def pushToDatabase(productId, body):
     global timeout_counter
@@ -203,44 +203,70 @@ def findFirstIndex(textToCheckSplit, correctTextSplit):
     return -1
 
 
-def selectMostLikelyText(textList, stringToCompare):
-    scoreArray = []
-    stringToComparLowerCase = stringToCompare.casefold()
+def tryFindMostLikelyText(textToCheck, correctText):
+    foundText = []
+    foundIndexes = []
+    fullFoundText = ""
+    # Here the received texts are split by " " characters and put into two lists.
+    correctTextSplit = correctText.split()
+    correctTextSplitToDelete = correctText.split()
+    textToCheckSplit = textToCheck.split()
 
-    for text in textList:
+    correctCount = 0
+    correctTextFound = False
+    exceededLastIndex = False
 
-        score = 0
-        wordArray = text.split()
+    while not exceededLastIndex:
+        if correctTextSplitToDelete:
+            foundIndex = findFirstIndex(textToCheckSplit, correctTextSplitToDelete)
+        else:
+            correctTextSplitToDelete = correctText.split()
+            for i in range(foundIndexes[len(foundIndexes)-1]+1):
+                del textToCheckSplit[0]
+            foundIndexes.clear()
+            foundText.clear()
+            correctCount = 0
+            foundIndex = -1
 
-        stringToCompareLen = len(stringToCompare)
-        textLen = len(text)
+        if foundIndex != -1:
+            if foundIndexes:
+                addedToList = False
+                for j in range(len(foundIndexes)):
+                    if foundIndex != foundIndexes[j] and foundIndex >= foundIndexes[j]-3 and foundIndex <= foundIndexes[j]+3 and not addedToList:
+                        foundIndexes.append(foundIndex)
+                        correctCount += 1
+                        foundText.append(textToCheckSplit[foundIndex])
+                        addedToList = True
+            else:
+                foundIndexes.append(foundIndex)
+                correctCount += 1
+                foundText.append(textToCheckSplit[foundIndex])
 
-        for word in wordArray:
-            wordToLowerCase = word.casefold()
+        if correctCount == len(correctTextSplit):
+            for i in range(len(correctTextSplit)):
+                if foundText[i] != correctTextSplit[i]:
+                    return False
+                else:
+                    correctTextFound = True
+                    exceededLastIndex = True
 
-            if wordToLowerCase in stringToComparLowerCase:
-                score += 1
+        if not correctTextFound:
+            if foundIndex != -1:
+                del correctTextSplitToDelete[0]
 
-            wordArrayStringToCompare = stringToCompare.split()
+            if foundIndex == 0:
+                del textToCheckSplit[0]
 
-            for wordStringToCompare in wordArrayStringToCompare:
-                if word == wordStringToCompare:
-                    score += 5
+            if len(textToCheckSplit) < len(correctTextSplit):
+                exceededLastIndex = True
 
-        if textLen < stringToCompareLen - 5 or textLen > stringToCompareLen + 5:
-            score = 0
+            if foundIndex == -1:
+                exceededLastIndex = True
 
-        scoreArray.append(score)
-
-    textMostLikely = None
-
-    if max(scoreArray) == 0:
-        textMostLikely = False
+    if correctTextFound:
+        return textToCheck
     else:
-        textMostLikelyIndex = scoreArray.index(max(scoreArray))
-        textMostLikely = textList[textMostLikelyIndex]
-
-    return textMostLikely
+        return False
 
 
 # The function below first splits the received texts by their words like: "Hello World" -> "Hello" "World". Then it will
@@ -350,35 +376,41 @@ def checkCharacterList(characterList, product):
     return correctItemsResult
 
 
-def checkTextFromWebsite(textList, brandItem):
-    textListWoc = []
-    textListScraped = []
+def checkCharacterListForMostLikely(characterList, product):
+    correctItems = []
+    correctItemsResult = []
     # a list based off of the layout of the received correct item is created to put the found results into.
-    for key, value in brandItem["product_brand"].items():
-        textListWoc.append(value)
-        textListScraped.append([])
+    for key, value in product["product_brand"].items():
+        correctItems.append(value)
+        correctItemsResult.append([])
 
-    for i in range(len(textListWoc)):
-        if isinstance(textListWoc[i], list):
-            for j in range(len(textListWoc[i])):
-                textListScraped[i].append([])
+    for i in range(len(correctItems)):
+        if isinstance(correctItems[i], list):
+            for j in range(len(correctItems[i])):
+                correctItemsResult[i].append([])
 
-    for i in range(len(textListWoc)):
-        if not isinstance(textListWoc[i], list):
+    # The loop below loops over all found text items to then compare them to the correct text.
+    for character in characterList:
+        if character:
             # The method below removes all special text characters like: \t, \r, \n etc.
-            stringToCompare = cleanText(textListWoc[i])
-            # The method below compares a singular found text to a component like: title, description, etc.
-            result = selectMostLikelyText(textList, stringToCompare)
-            if result != False:
-                textListScraped[i].append(result)
-        else:
-            for j in range(len(list(textListWoc[i]))):
-                stringToCompare = cleanText(textListWoc[i][j])
-                result = selectMostLikelyText(textList, stringToCompare)
-                if result != False:
-                    textListScraped[i][j].append(result)
+            text = cleanText(character)
 
-    return textListScraped
+            # The below loop goes over all correct items if they are in a list it goes through the list instead.
+            for i in range(len(correctItems)):
+                if not isinstance(correctItems[i], list):
+                    # The method below removes all special text characters like: \t, \r, \n etc.
+                    stringToCompare = cleanText(correctItems[i])
+                    # The method below compares a singular found text to a component like: title, description, etc.
+                    result = tryFindMostLikelyText(text, stringToCompare)
+                    if result != False:
+                        correctItemsResult[i].append(result)
+                else:
+                    for j in range(len(list(correctItems[i]))):
+                        stringToCompare = cleanText(correctItems[i][j])
+                        result = tryFindMostLikelyText(text, stringToCompare)
+                        if result != False:
+                            correctItemsResult[i][j].append(result)
+    return correctItemsResult
 
 
 def main(product, url):
@@ -464,11 +496,11 @@ def main(product, url):
     for i in range(len(tagArray)):
         tag = tagArray[i]
         if correctItemsResult == []:
-            correctItemsResult = checkTextFromWebsite(tag, product)
+            correctItemsResult = checkCharacterList(tag, product)
         else:
-            tempResult = checkTextFromWebsite(tag, product)
+            tempResult = checkCharacterList(tag, product)
             for i in range(len(correctItems)):
-                if not correctItemsResult[i] or not correctItemsResult[i][0]:
+                if not correctItemsResult[i]:
                     if not isinstance(correctItems[i], list):
                         correctItemsResult[i] = correctItemsResult[i] + tempResult[i]
                     else:
@@ -514,13 +546,11 @@ def main(product, url):
         "product_brand": product["product_brand"],
         "product_scraped": foundResult
     }
-    print(historyObject["product_scraped"])
-    # pushToDatabase(product["_id"], historyObject)
+    pushToDatabase(product["_id"], historyObject)
 
 
-if __name__ == "__main__":
-    connectToDatabaseAndGetBrands()
-    main(brands[15], "https://www.jumbo.com/producten/red-bull-energy-drink-504874BLK") #Jumbo red bull 1x 250ml
-    # main(brands[0], "https://www.ah.nl/producten/product/wi195821/red-bull-energy-drink") #Alberth Heijn red bull 1x 250ml
+# if __name__ == "__main__":
+    # main(brands[22]) #Jumbo red bull 1x 250ml
+    # main(brands[0]) #Alberth Heijn red bull 1x 250ml
     # main(brands[30]) #Alberth Heijn red bull 1x 250ml correct
     # main(brands[31])  #Jumbo red bull 1x 250ml correct
