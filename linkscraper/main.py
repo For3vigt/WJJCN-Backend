@@ -288,6 +288,8 @@ def find_product_in_urls(url):
         i = 0
         # Loop through all the products per retailer.
         while i < len(list(products)):
+            once = False
+
             if check_if_url_starts_with_domain(selected_retailer_url, read_links[j]):
                 # Split the URLs and filter them by a forward slash and an empty space.
                 split_link = read_links[j].split("/")
