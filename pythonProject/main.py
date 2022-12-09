@@ -107,6 +107,24 @@ def cleanText(raw_text):
     return cleantext
 
 
+# Below method gives a number of the distance the textToCompareWith is from the mainText. In other words how much of the
+# textToCompareWith is correct with mainText.
+def levenshteinDistance(mainText, textToCompareWith):
+    if len(mainText) > len(textToCompareWith):
+        mainText, textToCompareWith = textToCompareWith, mainText
+
+    distances = range(len(mainText) + 1)
+    for i2, c2 in enumerate(textToCompareWith):
+        distances_ = [i2+1]
+        for i1, c1 in enumerate(mainText):
+            if c1 == c2:
+                distances_.append(distances[i1])
+            else:
+                distances_.append(1 + min((distances[i1], distances[i1 + 1], distances_[-1])))
+        distances = distances_
+    return distances[-1]
+
+
 # Pauses the program, and continues to wait until the command is given to continue the code.
 def pause_and_resume_script():
     print("Pausing program \nPlease press enter")
@@ -381,7 +399,6 @@ def checkTextFromWebsite(textList, brandItem):
                 if result != False:
                     textListScraped[i][j].append(result)
 
-    print(textListScraped)
     return textListScraped
 
 
@@ -483,20 +500,31 @@ def main(product, url):
                         for j in range(len(correctItems[i])):
                             if tempResult[i][j] != []:
                                 mostLikelyItemsResult[i][j] = mostLikelyItemsResult[i][j] + tempResult[i][j]
-    
+
+
     # After going through all tag items for all attributes like title, description etc. the shortest match is found and returned.
     for i in range(len(correctItems)):
         if not isinstance(correctItems[i], list):
             if correctItemsResult[i] != []:
+                scores = {}
                 tempArray = correctItemsResult[i]
-                correctItemsResult[i] = min(tempArray, key=len)
+                for item in tempArray:
+                    scores[item] = 1 - levenshteinDistance(correctItems[i], item)
+
+                import operator
+                correctItemsResult[i] = max(scores.items(), key=operator.itemgetter(1))[0]
             else:
                 correctItemsResult[i] = "Not found"
         else:
             for j in range(len(correctItems[i])):
                 if correctItemsResult[i][j] != []:
+                    scores = {}
                     tempArray = correctItemsResult[i][j]
-                    correctItemsResult[i][j] = min(tempArray, key=len)
+                    for item in tempArray:
+                        scores[item] = 1 - levenshteinDistance(correctItems[i][j], item)
+
+                    import operator
+                    correctItemsResult[i][j] = max(scores.items(), key=operator.itemgetter(1))[0]
                 else:
                     correctItemsResult[i][j] = "Not found"
 
@@ -513,11 +541,23 @@ def main(product, url):
             correctItemsCount += 1
         if correctItemsResult[i] == "Not found" or isinstance(correctItemsResult[i], list) and mostLikelyItemsResult[i] != []:
             if mostLikelyItemsResult[i] != [] and not isinstance(correctItemsResult[i], list):
-                correctItemsResult[i] = min(mostLikelyItemsResult[i], key=len)
+                scores = {}
+                tempArray = mostLikelyItemsResult[i]
+                for item in tempArray:
+                    scores[item] = 1 - levenshteinDistance(correctItems[i], item)
+
+                import operator
+                correctItemsResult[i] = max(scores.items(), key=operator.itemgetter(1))[0]
             if isinstance(correctItemsResult[i], list):
                 for j in range(len(correctItemsResult[i])):
                     if correctItemsResult[i][j] == "Not found" and mostLikelyItemsResult[i][j] != []:
-                        correctItemsResult[i][j] = min(mostLikelyItemsResult[i][j], key=len)
+                        scores = {}
+                        tempArray = mostLikelyItemsResult[i][j]
+                        for item in tempArray:
+                            scores[item] = 1 - levenshteinDistance(correctItems[i][j], item)
+
+                        import operator
+                        correctItemsResult[i][j] = max(scores.items(), key=operator.itemgetter(1))[0]
         foundResult[jsonKeys[i]] = {"text": correctItemsResult[i], "equal_to_scraped": equal_to_scraped}
 
     score = round((correctItemsCount / len(correctItemsResult)) * 100)
