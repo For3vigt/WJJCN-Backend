@@ -536,9 +536,18 @@ def main(product, url):
     for i in range(len(correctItemsResult)):
         equal_to_scraped = False
 
-        if correctItemsResult[i] != "Not found":
-            equal_to_scraped = True
-            correctItemsCount += 1
+        if correctItemsResult[i] != "Not found" and correctItemsResult[i] == correctItems[i]:
+            if isinstance(correctItemsResult[i], list):
+                oneOrMoreNotFound = False
+                for item in correctItemsResult[i]:
+                    if item == "Not Found":
+                        oneOrMoreNotFound = True
+                if not oneOrMoreNotFound:
+                    equal_to_scraped = True
+                    correctItemsCount += 1
+            else:
+                equal_to_scraped = True
+                correctItemsCount += 1
         if correctItemsResult[i] == "Not found" or isinstance(correctItemsResult[i], list) and mostLikelyItemsResult[i] != []:
             if mostLikelyItemsResult[i] != [] and not isinstance(correctItemsResult[i], list):
                 scores = {}
