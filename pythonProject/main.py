@@ -536,7 +536,7 @@ def main(product, url):
     for i in range(len(correctItemsResult)):
         equal_to_scraped = False
 
-        if correctItemsResult[i] != "Not found" and correctItemsResult[i] == correctItems[i]:
+        if correctItemsResult[i] != "Not found" and correctItemsResult[i] == correctItems[i] or correctItemsResult[i] != "Not found" and correctItems[i] in correctItemsResult[i]:
             if isinstance(correctItemsResult[i], list):
                 oneOrMoreNotFound = False
                 for item in correctItemsResult[i]:
