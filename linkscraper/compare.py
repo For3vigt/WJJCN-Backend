@@ -47,7 +47,6 @@ def error_handler(error_id, message, step):
 
     client.close()
 
-
 # The code below connects to the database and receives all brands, so the products and their correct data can be
 # compared. If something goes wrong with connecting to the database, it will stop the code and retry when the user tells it to.
 # def connectToDatabaseAndGetBrands():
@@ -100,8 +99,7 @@ def pushToDatabase(productId, body):
 
     if counter != timeout_retry:
         try:
-            client = pymongo.MongoClient("mongodb+srv://wjjcn:Sl33fAQiLusKGsx8@woc.amjwpqs.mongodb.net/",
-                                         tlsCAFile=ca, connectTimeoutMS=5000)
+            client = pymongo.MongoClient("mongodb+srv://wjjcn:Sl33fAQiLusKGsx8@woc.amjwpqs.mongodb.net/", tlsCAFile=ca, connectTimeoutMS=5000)
 
             with client:
                 db = client.wjjcn
@@ -126,18 +124,33 @@ def pushToDatabase(productId, body):
             return brands
 
         pushToDatabase(productId, body)
-
-
 '''
     END DATABASE
 '''
-
 
 def cleanText(raw_text):
     cleantext = re.sub('-', ' -', raw_text)
     cleantext = re.sub('[\n\r\t]', ' ', cleantext)
     cleantext = re.sub(' +', ' ', cleantext)
     return cleantext
+
+
+# Below method gives a number of the distance the textToCompareWith is from the mainText. In other words how much of the
+# textToCompareWith is correct with mainText.
+def levenshteinDistance(mainText, textToCompareWith):
+    if len(mainText) > len(textToCompareWith):
+        mainText, textToCompareWith = textToCompareWith, mainText
+
+    distances = range(len(mainText) + 1)
+    for i2, c2 in enumerate(textToCompareWith):
+        distances_ = [i2+1]
+        for i1, c1 in enumerate(mainText):
+            if c1 == c2:
+                distances_.append(distances[i1])
+            else:
+                distances_.append(1 + min((distances[i1], distances[i1 + 1], distances_[-1])))
+        distances = distances_
+    return distances[-1]
 
 
 # Pauses the program, and continues to wait until the command is given to continue the code.
@@ -176,8 +189,7 @@ def getPage(url):
 
     html = requests
 
-    agent = {
-        "User-Agent": 'Mozilla/5.0 (Windows NT 6.3; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/59.0.3071.115 Safari/537.36'}
+    agent = {"User-Agent": 'Mozilla/5.0 (Windows NT 6.3; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/59.0.3071.115 Safari/537.36'}
     if counter != timeout_retry:
         try:
             html = requests.get(url, headers=agent, timeout=request_timeout_in_seconds).text
@@ -240,7 +252,6 @@ def findFirstIndex(textToCheckSplit, correctTextSplit):
 def selectMostLikelyText(textList, stringToCompare):
     scoreArray = []
     stringToComparLowerCase = stringToCompare.casefold()
-
     for text in textList:
 
         score = 0
@@ -273,7 +284,6 @@ def selectMostLikelyText(textList, stringToCompare):
     else:
         textMostLikelyIndex = scoreArray.index(max(scoreArray))
         textMostLikely = textList[textMostLikelyIndex]
-
     return textMostLikely
 
 
@@ -519,19 +529,30 @@ def main(product, url, error_id):
                             if tempResult[i][j] != []:
                                 mostLikelyItemsResult[i][j] = mostLikelyItemsResult[i][j] + tempResult[i][j]
 
+
     # After going through all tag items for all attributes like title, description etc. the shortest match is found and returned.
     for i in range(len(correctItems)):
         if not isinstance(correctItems[i], list):
             if correctItemsResult[i] != []:
+                scores = {}
                 tempArray = correctItemsResult[i]
-                correctItemsResult[i] = min(tempArray, key=len)
+                for item in tempArray:
+                    scores[item] = 1 - levenshteinDistance(correctItems[i], item)
+
+                import operator
+                correctItemsResult[i] = max(scores.items(), key=operator.itemgetter(1))[0]
             else:
                 correctItemsResult[i] = "Not found"
         else:
             for j in range(len(correctItems[i])):
                 if correctItemsResult[i][j] != []:
+                    scores = {}
                     tempArray = correctItemsResult[i][j]
-                    correctItemsResult[i][j] = min(tempArray, key=len)
+                    for item in tempArray:
+                        scores[item] = 1 - levenshteinDistance(correctItems[i][j], item)
+
+                    import operator
+                    correctItemsResult[i][j] = max(scores.items(), key=operator.itemgetter(1))[0]
                 else:
                     correctItemsResult[i][j] = "Not found"
 
@@ -543,16 +564,37 @@ def main(product, url, error_id):
     for i in range(len(correctItemsResult)):
         equal_to_scraped = False
 
-        if correctItemsResult[i] != "Not found":
-            equal_to_scraped = True
-            correctItemsCount += 1
-        if correctItemsResult[i] == "Not found" and mostLikelyItemsResult[i] != []:
-            correctItemsResult[i] = min(mostLikelyItemsResult[i], key=len)
+        if correctItemsResult[i] != "Not found" and correctItemsResult[i] == correctItems[i]:
             if isinstance(correctItemsResult[i], list):
-                for i in range(len(correctItemsResult[i])):
-                    if correctItemsResult[i][j] == "Not found" and mostLikelyItemsResult[i][j] != []:
-                        correctItemsResult[i][j] = min(mostLikelyItemsResult[i][j], key=len)
+                oneOrMoreNotFound = False
+                for item in correctItemsResult[i]:
+                    if item == "Not Found":
+                        oneOrMoreNotFound = True
+                if not oneOrMoreNotFound:
+                    equal_to_scraped = True
+                    correctItemsCount += 1
+            else:
+                equal_to_scraped = True
+                correctItemsCount += 1
+        if correctItemsResult[i] == "Not found" or isinstance(correctItemsResult[i], list) and mostLikelyItemsResult[i] != []:
+            if mostLikelyItemsResult[i] != [] and not isinstance(correctItemsResult[i], list):
+                scores = {}
+                tempArray = mostLikelyItemsResult[i]
+                for item in tempArray:
+                    scores[item] = 1 - levenshteinDistance(correctItems[i], item)
 
+                import operator
+                correctItemsResult[i] = max(scores.items(), key=operator.itemgetter(1))[0]
+            if isinstance(correctItemsResult[i], list):
+                for j in range(len(correctItemsResult[i])):
+                    if correctItemsResult[i][j] == "Not found" and mostLikelyItemsResult[i][j] != []:
+                        scores = {}
+                        tempArray = mostLikelyItemsResult[i][j]
+                        for item in tempArray:
+                            scores[item] = 1 - levenshteinDistance(correctItems[i][j], item)
+
+                        import operator
+                        correctItemsResult[i][j] = max(scores.items(), key=operator.itemgetter(1))[0]
         foundResult[jsonKeys[i]] = {"text": correctItemsResult[i], "equal_to_scraped": equal_to_scraped}
 
     score = round((correctItemsCount / len(correctItemsResult)) * 100)
@@ -566,9 +608,10 @@ def main(product, url, error_id):
     # print(historyObject["product_scraped"])
     pushToDatabase(product["_id"], historyObject)
 
+
 # if __name__ == "__main__":
 #     connectToDatabaseAndGetBrands()
-#     main(brands[15], "https://www.jumbo.com/producten/red-bull-energy-drink-504874BLK") #Jumbo red bull 1x 250ml
+#     main(brands[0], "https://www.ah.nl/producten/product/wi195821/red-bull-energy-drink") #Jumbo red bull 1x 250ml
 # main(brands[0], "https://www.ah.nl/producten/product/wi195821/red-bull-energy-drink") #Alberth Heijn red bull 1x 250ml
 # main(brands[30]) #Alberth Heijn red bull 1x 250ml correct
 # main(brands[31])  #Jumbo red bull 1x 250ml correct
