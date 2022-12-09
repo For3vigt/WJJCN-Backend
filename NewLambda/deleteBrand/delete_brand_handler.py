@@ -2,29 +2,39 @@ from http.client import ImproperConnectionState
 import json
 import os
 import pymongo
+import bson.json_util as json_util
 import jwt
 import datetime
-import bson.json_util as json_util
 from bson.objectid import ObjectId
+import hashlib
+
 
 myclient = pymongo.MongoClient(os.environ.get('db_host'))
 mydb = myclient[os.environ.get("db")]
-logscol = mydb["logs"]
+brandscol = mydb["brands"]
 usercol = mydb["user"]
-retailercol = mydb["retailers"]
 
 def lambda_handler(event, context):
-    #token checken 
+    # Check if token is sent
     if event.get('token', None) == None:
         return {
             'statuscode': 400,
             'body': json.dumps('token is not defined!')
         }
     
+    # Check if id is sent
+    if event.get('id', None) == None:
+        return {
+            'statuscode': 400,
+            'body': json.dumps('id is not defined!')
+        }
+
+    # Get hashed user password from DB
     userdoc = usercol.find()
     user_json_result = json.loads(json_util.dumps(userdoc))
     hashed_password_from_database = user_json_result[0]["password_hashed"]
-    
+
+    # Create token with hashed pass from DB
     token = jwt.encode({
         'id': '1',
         'date': datetime.datetime.now().strftime("%m-%d-%Y"), 
@@ -34,24 +44,27 @@ def lambda_handler(event, context):
     algorithm='HS256')
     
     token_from_website = event["token"]
+
+    # Check if the 2 tokens are equal
     if (token == token_from_website):
-        logsdoc = logscol.find()
-        logs_json_result = json.loads(json_util.dumps(logsdoc))
+        # Collect the data 
+        brandId = event['name']
         
-        returnarray = []
-        for index, log in enumerate(logs_json_result):
-            retailersql = {"_id": ObjectId(log["retailer"]["$oid"])}
-            retailerdoc = retailercol.find(retailersql)
-            retailer_json_result = json.loads(json_util.dumps(retailerdoc))
-            
-            templog = {"_id": log["_id"], "date_run": log["date_run"], "steps": log["steps"], "retailer": retailer_json_result[0]["name"]} 
-            returnarray.append(templog)
-        return(returnarray)
-        
+        brandQuery = {"_id": brandId}
+        brandscol.delete_one(brandQuery) 
+
+        return {
+            'statuscode': 200,
+            'body': json.dumps('Brand deleted!')
+        }  
+
+
+    # If tokens are not equal return 401
     return {
         'statuscode': 401,
         'body': json.dumps('Token incorrect!')
     }   
+
 
     
 

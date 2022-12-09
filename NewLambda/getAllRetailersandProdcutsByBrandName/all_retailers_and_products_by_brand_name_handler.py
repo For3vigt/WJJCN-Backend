@@ -12,12 +12,14 @@ retailercol = mydb["retailers"]
 productcol = mydb["products"]
 
 def lambda_handler(event, context):
+    # Chech if brand is sent
     if event.get('brand', None) == None:
         return {
             'statuscode': 400,
             'body': json.dumps('brand is not defined!')
         }
     
+    # Get brand by brand name
     brandname = '{}'.format(event['brand'])
     brandsql = { "name": brandname }
     branddoc = brandcol.find(brandsql)
@@ -25,7 +27,9 @@ def lambda_handler(event, context):
     
     returnarray = []
     
+    # Loop retailers form brand
     for index, retailer in enumerate(brand_json_result[0]["retailers"]):
+        # Get retailer by ID
         retailersql = {"_id": ObjectId(retailer["$oid"])}
         retailerdoc = retailercol.find(retailersql)
         retailer_json_result = json.loads(json_util.dumps(retailerdoc))
@@ -39,7 +43,7 @@ def lambda_handler(event, context):
         
         products = []
         for product in product_json_result:
-            tempProduct = {"name": product["product"], "score": product["score"]}
+            tempProduct = {"name": product["name"], "score": product["history"][-1]["score"]}
             products.append(tempProduct)
         
         returnarray[index]["products"] = products

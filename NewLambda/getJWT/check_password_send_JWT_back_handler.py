@@ -13,6 +13,7 @@ mydb = myclient[os.environ.get("db")]
 mycol = mydb["user"]
 
 def lambda_handler(event, context):
+    # Check if password is sent
     if event.get('password', None) == None:
         return {
             'statuscode': 400,
@@ -42,8 +43,8 @@ def lambda_handler(event, context):
         algorithm='HS256')
         
         return {
-        'statuscode': 200,
-        'token': token
+            'statuscode': 200,
+            'token': token
         }   
 
     return {

@@ -1,35 +1,40 @@
 from http.client import ImproperConnectionState
-from bson.objectid import ObjectId
 import json
-import jwt
 import os
 import pymongo
 import bson.json_util as json_util
+import jwt
 import datetime
+from bson.objectid import ObjectId
+import hashlib
 
 
 myclient = pymongo.MongoClient(os.environ.get('db_host'))
 mydb = myclient[os.environ.get("db")]
+retailerscol = mydb["retailers"]
 usercol = mydb["user"]
-retailercol = mydb["retailers"]
 
 def lambda_handler(event, context):
-    if event.get('retailers', None) == None:
-        return {
-            'statuscode': 400,
-            'body': json.dumps('scrape_url is not defined!')
-        }
-        
+    # Check if token is sent
     if event.get('token', None) == None:
         return {
             'statuscode': 400,
             'body': json.dumps('token is not defined!')
         }
     
+    # Check if id is sent 
+    if event.get('id', None) == None:
+        return {
+            'statuscode': 400,
+            'body': json.dumps('id is not defined!')
+        }
+
+    # Get hashed user password from DB
     userdoc = usercol.find()
     user_json_result = json.loads(json_util.dumps(userdoc))
     hashed_password_from_database = user_json_result[0]["password_hashed"]
 
+    # Create token with hashed pass from DB
     token = jwt.encode({
         'id': '1',
         'date': datetime.datetime.now().strftime("%m-%d-%Y"), 
@@ -40,24 +45,27 @@ def lambda_handler(event, context):
     
     token_from_website = event["token"]
 
-    # Check JWT token
+    # Check if the 2 tokens are equal
     if (token == token_from_website):
-        retailers = event["retailers"]
-        for retailer in retailers:
-            retailercol.find_one_and_update(
-                { "_id": ObjectId(retailer["_id"]["$oid"])},
-                {'$set': {"name": retailer["name"], "url_to_scrape": retailer["url_to_scrape"], "scrape": retailer["scrape"]}},
-                upsert=True
-            )
+        # Collect the data 
+        retailerId = event['name']
+        
+        retailerquery = {"_id": retailerId}
+        retailerscol.delete_one(retailerquery) 
 
         return {
             'statuscode': 200,
-            'body': json.dumps('All values changend!')
-        }   
-    
+            'body': json.dumps('Retailer deleted!')
+        }  
+
+
+    # If tokens are not equal return 401
     return {
         'statuscode': 401,
         'body': json.dumps('Token incorrect!')
     }   
+
+
+    
 
 #lambda_handler()
