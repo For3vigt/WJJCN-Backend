@@ -206,7 +206,6 @@ def findFirstIndex(textToCheckSplit, correctTextSplit):
 def selectMostLikelyText(textList, stringToCompare):
     scoreArray = []
     stringToComparLowerCase = stringToCompare.casefold()
-
     for text in textList:
 
         score = 0
@@ -239,7 +238,6 @@ def selectMostLikelyText(textList, stringToCompare):
     else:
         textMostLikelyIndex = scoreArray.index(max(scoreArray))
         textMostLikely = textList[textMostLikelyIndex]
-
     return textMostLikely
 
 
@@ -383,6 +381,7 @@ def checkTextFromWebsite(textList, brandItem):
                 if result != False:
                     textListScraped[i][j].append(result)
 
+    print(textListScraped)
     return textListScraped
 
 
@@ -484,7 +483,7 @@ def main(product, url):
                         for j in range(len(correctItems[i])):
                             if tempResult[i][j] != []:
                                 mostLikelyItemsResult[i][j] = mostLikelyItemsResult[i][j] + tempResult[i][j]
-
+    
     # After going through all tag items for all attributes like title, description etc. the shortest match is found and returned.
     for i in range(len(correctItems)):
         if not isinstance(correctItems[i], list):
@@ -512,13 +511,13 @@ def main(product, url):
         if correctItemsResult[i] != "Not found":
             equal_to_scraped = True
             correctItemsCount += 1
-        if correctItemsResult[i] == "Not found" and mostLikelyItemsResult[i] != []:
-            correctItemsResult[i] = min(mostLikelyItemsResult[i], key=len)
+        if correctItemsResult[i] == "Not found" or isinstance(correctItemsResult[i], list) and mostLikelyItemsResult[i] != []:
+            if mostLikelyItemsResult[i] != [] and not isinstance(correctItemsResult[i], list):
+                correctItemsResult[i] = min(mostLikelyItemsResult[i], key=len)
             if isinstance(correctItemsResult[i], list):
-                for i in range(len(correctItemsResult[i])):
+                for j in range(len(correctItemsResult[i])):
                     if correctItemsResult[i][j] == "Not found" and mostLikelyItemsResult[i][j] != []:
                         correctItemsResult[i][j] = min(mostLikelyItemsResult[i][j], key=len)
-
         foundResult[jsonKeys[i]] = {"text": correctItemsResult[i], "equal_to_scraped": equal_to_scraped}
 
     score = round((correctItemsCount / len(correctItemsResult)) * 100)
@@ -535,7 +534,7 @@ def main(product, url):
 
 if __name__ == "__main__":
     connectToDatabaseAndGetBrands()
-    main(brands[15], "https://www.jumbo.com/producten/red-bull-energy-drink-504874BLK") #Jumbo red bull 1x 250ml
+    main(brands[0], "https://www.ah.nl/producten/product/wi195821/red-bull-energy-drink") #Jumbo red bull 1x 250ml
     # main(brands[0], "https://www.ah.nl/producten/product/wi195821/red-bull-energy-drink") #Alberth Heijn red bull 1x 250ml
     # main(brands[30]) #Alberth Heijn red bull 1x 250ml correct
     # main(brands[31])  #Jumbo red bull 1x 250ml correct
