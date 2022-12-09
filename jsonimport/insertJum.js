@@ -17,6 +17,7 @@ const insert = dataAlg.map((data) => {
     retailer: ObjectId("63762a7bf2c01e7314083935"),
     name: data.Title,
     product_url: "",
+    reported: false,
     product_brand: {
       brand: data.Brand,
       title: data.Title,
@@ -35,9 +36,7 @@ const insert = dataAlg.map((data) => {
         data["Product Marketing Bullet Point 4"],
       ],
     },
-    history: [
-      
-    ],
+    history: [],
   };
 });
 

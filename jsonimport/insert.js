@@ -28,6 +28,7 @@ const insert = dataAlg.map((data) => {
         : ObjectId("63762d52f2c01e731408394f"),
     retailer: ObjectId("637629daf2c01e7314083933"),
     name: data.Opco + " " + data.Productomschrijving,
+    reported: false,
     product_url: "",
     product_brand: {
       productomschrijving: data.Productomschrijving,
@@ -43,9 +44,7 @@ const insert = dataAlg.map((data) => {
         data["USP/Bullet 4 (max. 75 tekens)"],
       ],
     },
-    history: [
-
-    ],
+    history: [],
   };
 });
 
