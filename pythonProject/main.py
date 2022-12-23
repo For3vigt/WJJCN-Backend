@@ -225,9 +225,20 @@ def selectMostLikelyText(textList, stringToCompare):
     scoreArray = []
     stringToComparLowerCase = stringToCompare.casefold()
 
+    for text in textList:
+        if "-" in text and len(text) > 30 or u'\u2022' in text:
+            textList.remove(text)
+            textArray = []
+            if "-" in text:
+                textArray = text.split("-")
+            elif u'\u2022' in text:
+                textArray = text.split(u'\u2022')
+
+            for bullitpoint in textArray:
+                textList.append(bullitpoint)
+
     # For each text in the array of text found give a score to that text.
     for text in textList:
-
         score = 0
         wordArray = text.split()
 
@@ -265,6 +276,7 @@ def selectMostLikelyText(textList, stringToCompare):
     else:
         textMostLikelyIndex = scoreArray.index(max(scoreArray))
         textMostLikely = textList[textMostLikelyIndex]
+    
     return textMostLikely
 
 
@@ -386,12 +398,12 @@ def checkTextFromWebsite(textList, brandItem):
     # a list based off of the layout of the received correct item is created to put the found results into.
     for key, value in brandItem["product_brand"].items():
         textListWoc.append(value)
-        textListScraped.append([])
-
-    for i in range(len(textListWoc)):
-        if isinstance(textListWoc[i], list):
-            for j in range(len(textListWoc[i])):
-                textListScraped[i].append([])
+        if not isinstance(value, list):
+            textListScraped.append([])
+        else:
+            textListScraped.append([])
+            for i in range(len(value)):
+                textListScraped[len(textListScraped) - 1].append([])
 
     for i in range(len(textListWoc)):
         if not isinstance(textListWoc[i], list):
@@ -468,17 +480,6 @@ def main(product, url):
     tagArray.append(liTags)
     # tagArray.append(seoTags)
 
-    # testTags = []
-    # testTags.append("Red bull energy drink is speciaal ontwikkeld voor momenten waarop je meer wilt presteren.")
-    # testTags.append("Red bull energy drink is test speciaal ontwikkeld test test voor test test momenten test test waarop test test je test meer wilt test test presteren.")
-    # testTags.append("Red bull energy drink is een ontwikkeld geweldig drankje maar dit is test speciaal ontwikkeld test test voor test test momenten test test waarop test test je test meer wilt test test presteren.")
-    # testTags.append("In een blikje Red Bull energy drink, zitten bepaalde stoffen die je gwn goed voor je zijn, lekker drinken maat")
-    # testTags.append("De hoeveelheid suiker is vergelijkbaar met sinaasappelsap: 11g/100ml")
-    # testcorrect = []
-    # testcorrect.append("Het suikergehalte van een blikje is gelijk aan frisdrank: 11g/100ml")
-    #
-    # temptest = tryFindMostLikelyText(testTags[4], testcorrect[0])
-
     # A loop goes through all tags and checks if the correct text is found in the found text by calling a method,
     # if the correct text is found somewhere in the found text a list is returned.
     for i in range(len(tagArray)):
@@ -502,13 +503,12 @@ def main(product, url):
         else:
             tempResult = checkTextFromWebsite(tag, product)
             for i in range(len(correctItems)):
-                if not correctItemsResult[i] or not correctItemsResult[i][0]:
-                    if not isinstance(correctItems[i], list):
-                        mostLikelyItemsResult[i] = mostLikelyItemsResult[i] + tempResult[i]
-                    else:
-                        for j in range(len(correctItems[i])):
-                            if tempResult[i][j] != []:
-                                mostLikelyItemsResult[i][j] = mostLikelyItemsResult[i][j] + tempResult[i][j]
+                if not isinstance(correctItems[i], list):
+                    mostLikelyItemsResult[i] = mostLikelyItemsResult[i] + tempResult[i]
+                else:
+                    for j in range(len(correctItems[i])):
+                        if tempResult[i][j] != []:
+                            mostLikelyItemsResult[i][j] = mostLikelyItemsResult[i][j] + tempResult[i][j]
 
 
     # After going through all tag items for all attributes like title, description etc. the shortest match is found and returned.
@@ -521,7 +521,11 @@ def main(product, url):
                     scores[item] = 1 - levenshteinDistance(correctItems[i], item)
 
                 import operator
-                correctItemsResult[i] = max(scores.items(), key=operator.itemgetter(1))[0]
+                bestMatch = max(scores.items(), key=operator.itemgetter(1))[0]
+                if tempResult == correctItems[i]:
+                    correctItemsResult[i] = bestMatch[0]
+                else:
+                    correctItemsResult[i] = "Not found"
             else:
                 correctItemsResult[i] = "Not found"
         else:
@@ -533,7 +537,11 @@ def main(product, url):
                         scores[item] = 1 - levenshteinDistance(correctItems[i][j], item)
 
                     import operator
-                    correctItemsResult[i][j] = max(scores.items(), key=operator.itemgetter(1))[0]
+                    bestMatch = max(scores.items(), key=operator.itemgetter(1))[0]
+                    if tempResult == correctItems[i][j]:
+                        correctItemsResult[i][j] = bestMatch[0]
+                    else:
+                        correctItemsResult[i][j] = "Not found"
                 else:
                     correctItemsResult[i][j] = "Not found"
 
@@ -542,10 +550,13 @@ def main(product, url):
     foundResult = {}
     correctItemsCount = 0
 
+    
+    # print("test ", correctItemsResult)
+
     for i in range(len(correctItemsResult)):
         equal_to_scraped = False
 
-        if correctItemsResult[i] != "Not found" and correctItemsResult[i] == correctItems[i] or correctItemsResult[i] != "Not found" and correctItems[i] in correctItemsResult[i]:
+        if correctItemsResult[i] != "Not found" and correctItemsResult[i] == correctItems[i]:
             if isinstance(correctItemsResult[i], list):
                 oneOrMoreNotFound = False
                 for item in correctItemsResult[i]:
@@ -568,6 +579,7 @@ def main(product, url):
                 correctItemsResult[i] = max(scores.items(), key=operator.itemgetter(1))[0]
             if isinstance(correctItemsResult[i], list):
                 for j in range(len(correctItemsResult[i])):
+                    # print(mostLikelyItemsResult[i])
                     if correctItemsResult[i][j] == "Not found" and mostLikelyItemsResult[i][j] != []:
                         scores = {}
                         tempArray = mostLikelyItemsResult[i][j]
@@ -576,6 +588,7 @@ def main(product, url):
 
                         import operator
                         correctItemsResult[i][j] = max(scores.items(), key=operator.itemgetter(1))[0]
+        # print(correctItemsResult)
         foundResult[jsonKeys[i]] = {"text": correctItemsResult[i], "equal_to_scraped": equal_to_scraped}
 
     score = round((correctItemsCount / len(correctItemsResult)) * 100)
