@@ -270,7 +270,7 @@ def find_product_in_urls(url):
                 product_urls.append(product['product_url'])
                 products.append(product['name'])
                 complete_product.append(product)
-                if product['product_url'] != '':
+                if product['product_url'] != "":
                     compare.main(product, product['product_url'], error_object_id)
                     already_scraped.append(product['name'])
 
@@ -508,6 +508,7 @@ def clear_lists():
     products_with.clear()
     retailers.clear()
     brands_with.clear()
+    already_scraped.clear()
 
 
 def crawler(scrape_url):

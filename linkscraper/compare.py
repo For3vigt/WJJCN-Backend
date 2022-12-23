@@ -18,8 +18,6 @@ brands = []
 '''
     DATABASE
 '''
-
-
 class PrintColors:
     INFO = '\033[94m'
     OK = '\033[92m'
@@ -46,7 +44,6 @@ def error_handler(error_id, message, step):
         update_logs_table.update_one(query, values_to_update)
 
     client.close()
-
 # The code below connects to the database and receives all brands, so the products and their correct data can be
 # compared. If something goes wrong with connecting to the database, it will stop the code and retry when the user tells it to.
 # def connectToDatabaseAndGetBrands():
@@ -99,7 +96,8 @@ def pushToDatabase(productId, body):
 
     if counter != timeout_retry:
         try:
-            client = pymongo.MongoClient("mongodb+srv://wjjcn:Sl33fAQiLusKGsx8@woc.amjwpqs.mongodb.net/", tlsCAFile=ca, connectTimeoutMS=5000)
+            client = pymongo.MongoClient("mongodb+srv://wjjcn:Sl33fAQiLusKGsx8@woc.amjwpqs.mongodb.net/",
+                                         tlsCAFile=ca, connectTimeoutMS=5000)
 
             with client:
                 db = client.wjjcn
@@ -183,7 +181,7 @@ def getPage(url):
     global timeout_counter
 
     timeout_retry = 15
-    request_timeout_in_seconds = 30
+    request_timeout_in_seconds = 5
 
     counter = timeout_counter
 
@@ -248,15 +246,25 @@ def findFirstIndex(textToCheckSplit, correctTextSplit):
 
     return -1
 
-
 # Compares the text found on the website and the string from the database.
 def selectMostLikelyText(textList, stringToCompare):
     scoreArray = []
     stringToComparLowerCase = stringToCompare.casefold()
 
+    for text in textList:
+        if "-" in text and len(text) > 60 or u'\u2022' in text:
+            textList.remove(text)
+            textArray = []
+            if "-" in text:
+                textArray = text.split("-")
+            elif u'\u2022' in text:
+                textArray = text.split(u'\u2022')
+
+            for bullitpoint in textArray:
+                textList.append(bullitpoint)
+
     # For each text in the array of text found give a score to that text.
     for text in textList:
-
         score = 0
         wordArray = text.split()
 
@@ -294,6 +302,7 @@ def selectMostLikelyText(textList, stringToCompare):
     else:
         textMostLikelyIndex = scoreArray.index(max(scoreArray))
         textMostLikely = textList[textMostLikelyIndex]
+
     return textMostLikely
 
 
@@ -415,12 +424,12 @@ def checkTextFromWebsite(textList, brandItem):
     # a list based off of the layout of the received correct item is created to put the found results into.
     for key, value in brandItem["product_brand"].items():
         textListWoc.append(value)
-        textListScraped.append([])
-
-    for i in range(len(textListWoc)):
-        if isinstance(textListWoc[i], list):
-            for j in range(len(textListWoc[i])):
-                textListScraped[i].append([])
+        if not isinstance(value, list):
+            textListScraped.append([])
+        else:
+            textListScraped.append([])
+            for i in range(len(value)):
+                textListScraped[len(textListScraped) - 1].append([])
 
     for i in range(len(textListWoc)):
         if not isinstance(textListWoc[i], list):
@@ -497,17 +506,6 @@ def main(product, url, error_id):
     tagArray.append(liTags)
     # tagArray.append(seoTags)
 
-    # testTags = []
-    # testTags.append("Red bull energy drink is speciaal ontwikkeld voor momenten waarop je meer wilt presteren.")
-    # testTags.append("Red bull energy drink is test speciaal ontwikkeld test test voor test test momenten test test waarop test test je test meer wilt test test presteren.")
-    # testTags.append("Red bull energy drink is een ontwikkeld geweldig drankje maar dit is test speciaal ontwikkeld test test voor test test momenten test test waarop test test je test meer wilt test test presteren.")
-    # testTags.append("In een blikje Red Bull energy drink, zitten bepaalde stoffen die je gwn goed voor je zijn, lekker drinken maat")
-    # testTags.append("De hoeveelheid suiker is vergelijkbaar met sinaasappelsap: 11g/100ml")
-    # testcorrect = []
-    # testcorrect.append("Het suikergehalte van een blikje is gelijk aan frisdrank: 11g/100ml")
-    #
-    # temptest = tryFindMostLikelyText(testTags[4], testcorrect[0])
-
     # A loop goes through all tags and checks if the correct text is found in the found text by calling a method,
     # if the correct text is found somewhere in the found text a list is returned.
     for i in range(len(tagArray)):
@@ -531,13 +529,12 @@ def main(product, url, error_id):
         else:
             tempResult = checkTextFromWebsite(tag, product)
             for i in range(len(correctItems)):
-                if not correctItemsResult[i] or not correctItemsResult[i][0]:
-                    if not isinstance(correctItems[i], list):
-                        mostLikelyItemsResult[i] = mostLikelyItemsResult[i] + tempResult[i]
-                    else:
-                        for j in range(len(correctItems[i])):
-                            if tempResult[i][j] != []:
-                                mostLikelyItemsResult[i][j] = mostLikelyItemsResult[i][j] + tempResult[i][j]
+                if not isinstance(correctItems[i], list):
+                    mostLikelyItemsResult[i] = mostLikelyItemsResult[i] + tempResult[i]
+                else:
+                    for j in range(len(correctItems[i])):
+                        if tempResult[i][j] != []:
+                            mostLikelyItemsResult[i][j] = mostLikelyItemsResult[i][j] + tempResult[i][j]
 
 
     # After going through all tag items for all attributes like title, description etc. the shortest match is found and returned.
@@ -550,7 +547,11 @@ def main(product, url, error_id):
                     scores[item] = 1 - levenshteinDistance(correctItems[i], item)
 
                 import operator
-                correctItemsResult[i] = max(scores.items(), key=operator.itemgetter(1))[0]
+                bestMatch = max(scores.items(), key=operator.itemgetter(1))[0]
+                if tempResult == correctItems[i]:
+                    correctItemsResult[i] = bestMatch[0]
+                else:
+                    correctItemsResult[i] = "Not found"
             else:
                 correctItemsResult[i] = "Not found"
         else:
@@ -562,7 +563,11 @@ def main(product, url, error_id):
                         scores[item] = 1 - levenshteinDistance(correctItems[i][j], item)
 
                     import operator
-                    correctItemsResult[i][j] = max(scores.items(), key=operator.itemgetter(1))[0]
+                    bestMatch = max(scores.items(), key=operator.itemgetter(1))[0]
+                    if tempResult == correctItems[i][j]:
+                        correctItemsResult[i][j] = bestMatch[0]
+                    else:
+                        correctItemsResult[i][j] = "Not found"
                 else:
                     correctItemsResult[i][j] = "Not found"
 
@@ -570,6 +575,9 @@ def main(product, url, error_id):
     today = date.today().strftime('%Y-%m-%d')
     foundResult = {}
     correctItemsCount = 0
+
+
+    # print("test ", correctItemsResult)
 
     for i in range(len(correctItemsResult)):
         equal_to_scraped = False
@@ -597,6 +605,7 @@ def main(product, url, error_id):
                 correctItemsResult[i] = max(scores.items(), key=operator.itemgetter(1))[0]
             if isinstance(correctItemsResult[i], list):
                 for j in range(len(correctItemsResult[i])):
+                    # print(mostLikelyItemsResult[i])
                     if correctItemsResult[i][j] == "Not found" and mostLikelyItemsResult[i][j] != []:
                         scores = {}
                         tempArray = mostLikelyItemsResult[i][j]
@@ -605,6 +614,7 @@ def main(product, url, error_id):
 
                         import operator
                         correctItemsResult[i][j] = max(scores.items(), key=operator.itemgetter(1))[0]
+        # print(correctItemsResult)
         foundResult[jsonKeys[i]] = {"text": correctItemsResult[i], "equal_to_scraped": equal_to_scraped}
 
     score = round((correctItemsCount / len(correctItemsResult)) * 100)
@@ -620,8 +630,8 @@ def main(product, url, error_id):
 
 
 # if __name__ == "__main__":
-#     connectToDatabaseAndGetBrands()
-#     main(brands[0], "https://www.ah.nl/producten/product/wi195821/red-bull-energy-drink") #Jumbo red bull 1x 250ml
+# connectToDatabaseAndGetBrands()
+# main(brands[29], "https://www.jumbo.com/producten/bullit-energy-drink-suikervrij-passievrucht-250ml-490330BLK/") #Jumbo red bull 1x 250ml
 # main(brands[0], "https://www.ah.nl/producten/product/wi195821/red-bull-energy-drink") #Alberth Heijn red bull 1x 250ml
 # main(brands[30]) #Alberth Heijn red bull 1x 250ml correct
 # main(brands[31])  #Jumbo red bull 1x 250ml correct
