@@ -21,6 +21,7 @@ internal_urls = set()
 read_links = []
 to_scrape = set()
 not_found = set()
+already_scraped = []
 products_with = []
 retailers = []
 brands_with = []
@@ -269,6 +270,9 @@ def find_product_in_urls(url):
                 product_urls.append(product['product_url'])
                 products.append(product['name'])
                 complete_product.append(product)
+                if product['product_url'] != '':
+                    compare.main(product, product['product_url'], error_object_id)
+                    already_scraped.append(product['name'])
 
         brands_table = db.brands.find()
 
@@ -288,79 +292,82 @@ def find_product_in_urls(url):
         i = 0
         # Loop through all the products per retailer.
         while i < len(list(products)):
-            if check_if_url_starts_with_domain(selected_retailer_url, read_links[j]):
-                # Split the URLs and filter them by a forward slash and an empty space.
-                split_link = read_links[j].split("/")
-                filtered_link = list(filter(None, split_link))
-                compare_once = False
+            if product_urls[i] == '':
+                if check_if_url_starts_with_domain(selected_retailer_url, read_links[j]):
+                    # Split the URLs and filter them by a forward slash and an empty space.
+                    split_link = read_links[j].split("/")
+                    filtered_link = list(filter(None, split_link))
+                    compare_once = False
 
-                # Loop through the split URLs
-                for x in range(len(filtered_link)):
-                    # Loop through all the brands per retailer.
-                    for retailer_table in range(len(brands)):
-                        # Replace all white spaces with dashes so that the brand as the same structure as a URL.
-                        brands_with.append(brands[retailer_table].replace(" ", "-"))
-                        # Check if a brand is somewhere in the split URLs
-                        if brands_with[retailer_table].lower() in filtered_link[x]:
-                            correct_count = 0
-                            percentage = 86
+                    # Loop through the split URLs
+                    for x in range(len(filtered_link)):
+                        # Loop through all the brands per retailer.
+                        for retailer_table in range(len(brands)):
+                            # Replace all white spaces with dashes so that the brand as the same structure as a URL.
+                            brands_with.append(brands[retailer_table].replace(" ", "-"))
+                            # Check if a brand is somewhere in the split URLs
+                            if brands_with[retailer_table].lower() in filtered_link[x]:
+                                correct_count = 0
+                                percentage = 86
 
-                            # Split the products and URLs for easy looping.
-                            product_in_database = products[i].lower().split("-")
-                            found_product_url = filtered_link[x].split("-")
+                                # Split the products and URLs for easy looping.
+                                product_in_database = products[i].lower().split("-")
+                                found_product_url = filtered_link[x].split("-")
 
-                            # Remove unnecessary information from the URLs found in Jumbo.
-                            if 'BLK' in found_product_url[-1] or 'PAK' in found_product_url[-1] or 'TRL' in found_product_url[-1]:
-                                del found_product_url[-1]
+                                # Remove unnecessary information from the URLs found in Jumbo.
+                                if 'BLK' in found_product_url[-1] or 'PAK' in found_product_url[-1] or 'TRL' in found_product_url[-1]:
+                                    del found_product_url[-1]
 
-                            # Remove units in the products.
-                            if 'ml' in product_in_database[-1] or 'l' in product_in_database[-1]:
-                                del product_in_database[-1]
+                                # Remove units in the products.
+                                if 'ml' in product_in_database[-1] or 'l' in product_in_database[-1]:
+                                    del product_in_database[-1]
 
-                            # Loop through the double split URL and product.
-                            for p2 in range(len(found_product_url)):
-                                for p in range(len(product_in_database)):
-                                    # Check if the one of the indexes of the product is in one of the indexes of the URL.
-                                    if product_in_database[p] in found_product_url[p2]:
-                                        # Check if one of the indexes of the product is equal to one of the indexes of the URL.
-                                        if product_in_database[p] == found_product_url[p2]:
-                                            correct_count += 1
-                                            # Check if the counter has the same length as the length of the split product from the database.
-                                            if correct_count == len(product_in_database):
-                                                # If the end of the URL as numbers in it. Set the threshold lower.
-                                                if has_numbers(found_product_url[-1]):
-                                                    percentage = 76
-                                                # Check if the percentage correct from the product and the URL are greater than the threshold.
-                                                if (len(product_in_database) / len(found_product_url)) * 100 > percentage:
-                                                    # Compare only once!
-                                                    if not compare_once:
-                                                        # Check if the URL from the product in the database is equal to the found URL.
-                                                        if product_urls[i] == read_links[j]:
-                                                            to_scrape.add("Product: " + products[i] + "\nURL: " + product_urls[i])
-                                                            # Comparer gets the URL from the product in the database.
-                                                            compare.main(complete_product[i], product_urls[i], error_object_id)
-                                                            compare_once = True
-                                                            break
-                                                        # Check if the URL from the product in the database is empty.
-                                                        elif product_urls[i] == "":
-                                                            update_product_url(complete_product[i]['_id'], read_links[j])
-                                                            to_scrape.add("Product: " + products[i] + "\nURL: " + read_links[j])
-                                                            # Comparer gets the found URL.
-                                                            compare.main(complete_product[i], read_links[j], error_object_id)
-                                                            compare_once = True
-                                                            break
-                                                        else:
-                                                            to_scrape.add("Product: " + products[i] + "\nURL: " + read_links[j])
-                                                            # Comparer gets the found URL.
-                                                            compare.main(complete_product[i], read_links[j], error_object_id)
-                                                            compare_once = True
-                                                            break
-                                                break
+                                # Loop through the double split URL and product.
+                                for p2 in range(len(found_product_url)):
+                                    for p in range(len(product_in_database)):
+                                        # Check if the one of the indexes of the product is in one of the indexes of the URL.
+                                        if product_in_database[p] in found_product_url[p2]:
+                                            # Check if one of the indexes of the product is equal to one of the indexes of the URL.
+                                            if product_in_database[p] == found_product_url[p2]:
+                                                correct_count += 1
+                                                # Check if the counter has the same length as the length of the split product from the database.
+                                                if correct_count == len(product_in_database):
+                                                    # If the end of the URL as numbers in it. Set the threshold lower.
+                                                    if has_numbers(found_product_url[-1]):
+                                                        percentage = 76
+                                                    # Check if the percentage correct from the product and the URL are greater than the threshold.
+                                                    if (len(product_in_database) / len(found_product_url)) * 100 > percentage:
+                                                        # Compare only once!
+                                                        if not compare_once:
+                                                            # Check if the URL from the product in the database is equal to the found URL.
+                                                            if product_urls[i] == read_links[j]:
+                                                                to_scrape.add("Product: " + products[i] + "\nURL: " + product_urls[i])
+                                                                # Comparer gets the URL from the product in the database.
+                                                                compare.main(complete_product[i], product_urls[i], error_object_id)
+                                                                compare_once = True
+                                                                break
+                                                            # Check if the URL from the product in the database is empty.
+                                                            elif product_urls[i] == "":
+                                                                update_product_url(complete_product[i]['_id'], read_links[j])
+                                                                to_scrape.add("Product: " + products[i] + "\nURL: " + read_links[j])
+                                                                # Comparer gets the found URL.
+                                                                compare.main(complete_product[i], read_links[j], error_object_id)
+                                                                compare_once = True
+                                                                break
+                                                            else:
+                                                                to_scrape.add("Product: " + products[i] + "\nURL: " + read_links[j])
+                                                                # Comparer gets the found URL.
+                                                                compare.main(complete_product[i], read_links[j], error_object_id)
+                                                                compare_once = True
+                                                                break
+                                                    break
             i += 1
 
-    if len(to_scrape) > 0:
+    if len(to_scrape) > 0 or len(already_scraped) > 0:
         for product_url in to_scrape:
             print(PrintColors.INFO + "[INFO]" + PrintColors.ENDC + " " + product_url)
+        for scraped in already_scraped:
+            print(PrintColors.INFO + "[INFO]" + PrintColors.ENDC + " " + scraped)
 
         end_time = datetime.now()
         print(PrintColors.INFO + '[INFO]' + PrintColors.ENDC + ' Link comparer duration: {}'.format(end_time - start_time))
