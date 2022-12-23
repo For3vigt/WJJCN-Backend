@@ -226,7 +226,7 @@ def selectMostLikelyText(textList, stringToCompare):
     stringToComparLowerCase = stringToCompare.casefold()
 
     for text in textList:
-        if "-" in text and len(text) > 30 or u'\u2022' in text:
+        if "-" in text and len(text) > 60 or u'\u2022' in text:
             textList.remove(text)
             textArray = []
             if "-" in text:
@@ -605,7 +605,7 @@ def main(product, url):
 
 if __name__ == "__main__":
     connectToDatabaseAndGetBrands()
-    main(brands[29], "https://www.jumbo.com/producten/bullit-energy-drink-suikervrij-passievrucht-250ml-490330BLK/") #Jumbo red bull 1x 250ml
+    main(brands[29], "https://www.jumbo.com/producten/bullit-energy-drink-suikervrij-250-ml-6-pack-486974DS") #Jumbo red bull 1x 250ml
     # main(brands[0], "https://www.ah.nl/producten/product/wi195821/red-bull-energy-drink") #Alberth Heijn red bull 1x 250ml
     # main(brands[30]) #Alberth Heijn red bull 1x 250ml correct
     # main(brands[31])  #Jumbo red bull 1x 250ml correct
