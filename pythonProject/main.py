@@ -222,65 +222,71 @@ def findFirstIndex(textToCheckSplit, correctTextSplit):
 
 # Compares the text found on the website and the string from the database.
 def selectMostLikelyText(textList, stringToCompare):
+    scoreArray = []
     stringToComparLowerCase = stringToCompare.casefold()
-    textMostLikely = None
+
     stringToCompareHasMultipleBullitPoints = False
     
     if stringToCompare.count('-') > 3 or stringToCompare.count('\u2022') > 3:
         stringToCompareHasMultipleBullitPoints = True
 
     # Check if text contains bullit points and remove from textList and split on them. After that add each individual bullit point back to textList. 
-    # if stringToCompareHasMultipleBullitPoints == False:
-    #     for text in textList:
-    #         if "-" in text and len(text) > 60 or u'\u2022' in text:
-    #             textList.remove(text)
-    #             textArray = []
-    #             if "-" in text:
-    #                 textArray = text.split("-", 1)
-    #             elif u'\u2022' in text:
-    #                 textArray = text.split(u'\u2022')
+    if stringToCompareHasMultipleBullitPoints == False:
+        for text in textList:
+            if "-" in text and len(text) > 60 or u'\u2022' in text:
+                textList.remove(text)
+                textArray = []
+                if "-" in text:
+                    textArray = text.split("-", 1)
+                elif u'\u2022' in text:
+                    textArray = text.split(u'\u2022')
 
-    #             for bullitpoint in textArray:
-    #                 textList.append(bullitpoint)
+                for bullitpoint in textArray:
+                    textList.append(bullitpoint)
 
     # For each text in the array of text found give a score to that text.
-    # for text in textList:
-    score = 0
-    wordArray = textList.split()
+    for text in textList:
+        score = 0
+        wordArray = text.split()
 
-    stringToCompareLen = len(stringToCompare)
-    textLen = len(textList)
+        stringToCompareLen = len(stringToCompare)
+        textLen = len(text)
 
-    # Check if a word from the text found is in the string from the database and vice versa.
-    for word in wordArray:
-        wordToLowerCase = word.casefold()
+        # Check if a word from the text found is in the string from the database and vice versa.
+        for word in wordArray:
+            wordToLowerCase = word.casefold()
 
-        if wordToLowerCase in stringToComparLowerCase:
-            score += 1
-
-        wordArrayStringToCompare = stringToCompare.split()
-
-        for wordStringToCompare in wordArrayStringToCompare:
-            if wordStringToCompare in textList:
+            if wordToLowerCase in stringToComparLowerCase:
                 score += 1
 
-            if word == wordStringToCompare:
-                score += 5
+            wordArrayStringToCompare = stringToCompare.split()
 
-    # if text lenght isn't close to each other then the score will become zero for that text.
-    if textLen < stringToCompareLen - 100 or textLen > stringToCompareLen + 100:
-        score = 0
-    
-    # if the score is 0 or 1 then the score will become zero.
-    if score < 2:
-        score = 0
+            for wordStringToCompare in wordArrayStringToCompare:
+                if wordStringToCompare in text:
+                    score += 1
+
+                if word == wordStringToCompare:
+                    score += 5
+
+        # if text lenght isn't close to each other then the score will become zero for that text.
+        if textLen < stringToCompareLen - 30 or textLen > stringToCompareLen + 30:
+            score = 0
+        
+        # if the score is 0 or 1 then the score will become zero.
+        if score < 2 or textLen > 50 and score < 5:
+            score = 0
+
+        scoreArray.append(score)
+
+    textMostLikely = None
 
     # Check if max score in the array is too low depending on the amount of words in the array from string to compare.
     # Else text mostlikely will become the highest score array.
-    if score <= 2 and len(stringToCompare.split()) > 2 or score == 0:
+    if max(scoreArray) <= 2 and len(stringToCompare.split()) > 2 or max(scoreArray) == 0:
         textMostLikely = False
     else:
-        textMostLikely = textList
+        textMostLikelyIndex = scoreArray.index(max(scoreArray))
+        textMostLikely = textList[textMostLikelyIndex]
     
     return textMostLikely
 
@@ -373,6 +379,11 @@ def checkCharacterList(characterList, product):
             for i in range(len(value)):
                 correctItemsResult[len(correctItemsResult) - 1].append([])
 
+    for i in range(len(correctItems)):
+        if isinstance(correctItems[i], list):
+            for j in range(len(correctItems[i])):
+                correctItemsResult[i].append([])
+
     # The loop below loops over all found text items to then compare them to the correct text.
     for character in characterList:
         if character:
@@ -410,24 +421,20 @@ def checkTextFromWebsite(textList, brandItem):
             for i in range(len(value)):
                 textListScraped[len(textListScraped) - 1].append([])
 
-    for character in textList:
-        if character:
+    for i in range(len(textListWoc)):
+        if not isinstance(textListWoc[i], list):
             # The method below removes all special text characters like: \t, \r, \n etc.
-            text = cleanText(character)
-            for i in range(len(textListWoc)):
-                if not isinstance(textListWoc[i], list):
-                    # The method below removes all special text characters like: \t, \r, \n etc.
-                    stringToCompare = cleanText(textListWoc[i])
-                    # The method below compares a singular found text to a component like: title, description, etc.
-                    result = selectMostLikelyText(text, stringToCompare)
-                    if result != False:
-                        textListScraped[i].append(result)
-                else:
-                    for j in range(len(list(textListWoc[i]))):
-                        stringToCompare = cleanText(textListWoc[i][j])
-                        result = selectMostLikelyText(text, stringToCompare)
-                        if result != False:
-                            textListScraped[i][j].append(result)
+            stringToCompare = cleanText(textListWoc[i])
+            # The method below compares a singular found text to a component like: title, description, etc.
+            result = selectMostLikelyText(textList, stringToCompare)
+            if result != False:
+                textListScraped[i].append(result)
+        else:
+            for j in range(len(list(textListWoc[i]))):
+                stringToCompare = cleanText(textListWoc[i][j])
+                result = selectMostLikelyText(textList, stringToCompare)
+                if result != False:
+                    textListScraped[i][j].append(result)
 
     return textListScraped
 
@@ -614,7 +621,7 @@ def main(product, url):
 
 if __name__ == "__main__":
     connectToDatabaseAndGetBrands()
-    main(brands[25], "https://www.jumbo.com/producten/red-bull-energy-drink-6-pack-250ml-92647PAK") #Jumbo red bull 1x 250ml
+    main(brands[18], "https://www.jumbo.com/producten/bullit-energy-drink-suikervrij-passievrucht-250ml-490330BLK/") #Jumbo red bull 1x 250ml
     # main(brands[0], "https://www.ah.nl/producten/product/wi195821/red-bull-energy-drink") #Alberth Heijn red bull 1x 250ml
     # main(brands[30]) #Alberth Heijn red bull 1x 250ml correct
     # main(brands[31])  #Jumbo red bull 1x 250ml correct
