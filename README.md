@@ -29,4 +29,3 @@ zodat deze eenvoudig opgehaald kunnen worden.
 
 ## Wat moet er zijn geïnstalleerd
 Om dit programma te laten werken moet python 3.10 op de pc zijn geïnstalleerd, zorg ervoor dat er geen ander versies van
-python zijn geïnstalleerd zijn.
