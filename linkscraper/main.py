@@ -99,7 +99,7 @@ def pause_and_resume_script():
                 print(PrintColors.INFO + "[INFO]" + PrintColors.ENDC + " resuming code")
                 run = False
             if res == "2":
-                sys.exit()
+                break
 
 
 def get_url(url):
@@ -557,17 +557,17 @@ def main():
                         crawler(scrape_url)
                     elif check_date == "n":
                         print(PrintColors.WARNING + "[SYSTEM]" + PrintColors.ENDC + " Goodbye")
-                        sys.exit()
+                        break
                     else:
                         print(PrintColors.WARNING + "[SYSTEM]" + PrintColors.ENDC + " Goodbye")
-                        sys.exit()
+                        break
                 else:
                     crawler(scrape_url)
 
             else:
-                sys.exit()
+                print(PrintColors.FAIL + "[ERROR]" + PrintColors.ENDC + " The scrape url is invalid")
     except ValueError as e:
-        sys.exit(e)
+        print(PrintColors.FAIL + "[ERROR]" + PrintColors.ENDC + str(e))
     finally:
         print(PrintColors.WARNING + "[SYSTEM]" + PrintColors.ENDC + " Do you want to run the script again? y/n")
         key_input = input()
@@ -576,14 +576,10 @@ def main():
             main()
         elif key_input == "n":
             print(PrintColors.WARNING + "[SYSTEM]" + PrintColors.ENDC + " Goodbye")
-            sys.exit()
         else:
             print(PrintColors.WARNING + "[SYSTEM]" + PrintColors.ENDC + " Goodbye")
-            sys.exit()
 
 
 ''' 
     END PROGRAM
 '''
-
-main()
