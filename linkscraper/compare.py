@@ -251,17 +251,24 @@ def selectMostLikelyText(textList, stringToCompare):
     scoreArray = []
     stringToComparLowerCase = stringToCompare.casefold()
 
-    for text in textList:
-        if "-" in text and len(text) > 60 or u'\u2022' in text:
-            textList.remove(text)
-            textArray = []
-            if "-" in text:
-                textArray = text.split("-")
-            elif u'\u2022' in text:
-                textArray = text.split(u'\u2022')
+    stringToCompareHasMultipleBullitPoints = False
 
-            for bullitpoint in textArray:
-                textList.append(bullitpoint)
+    if stringToCompare.count('-') > 3 or stringToCompare.count('\u2022') > 3:
+        stringToCompareHasMultipleBullitPoints = True
+
+    # Check if text contains bullit points and remove from textList and split on them. After that add each individual bullit point back to textList.
+    if stringToCompareHasMultipleBullitPoints == False:
+        for text in textList:
+            if "-" in text and len(text) > 60 or u'\u2022' in text:
+                textList.remove(text)
+                textArray = []
+                if "-" in text:
+                    textArray = text.split("-", 1)
+                elif u'\u2022' in text:
+                    textArray = text.split(u'\u2022')
+
+                for bullitpoint in textArray:
+                    textList.append(bullitpoint)
 
     # For each text in the array of text found give a score to that text.
     for text in textList:
@@ -287,8 +294,12 @@ def selectMostLikelyText(textList, stringToCompare):
                 if word == wordStringToCompare:
                     score += 5
 
-        # if text lenght isn't close to each other than string is completely different.
+        # if text lenght isn't close to each other then the score will become zero for that text.
         if textLen < stringToCompareLen - 30 or textLen > stringToCompareLen + 30:
+            score = 0
+
+        # if the score is 0 or 1 then the score will become zero.
+        if score < 2 or textLen > 50 and score < 5:
             score = 0
 
         scoreArray.append(score)
@@ -387,7 +398,12 @@ def checkCharacterList(characterList, product):
     # a list based off of the layout of the received correct item is created to put the found results into.
     for key, value in product["product_brand"].items():
         correctItems.append(value)
-        correctItemsResult.append([])
+        if not isinstance(value, list):
+            correctItemsResult.append([])
+        else:
+            correctItemsResult.append([])
+            for i in range(len(value)):
+                correctItemsResult[len(correctItemsResult) - 1].append([])
 
     for i in range(len(correctItems)):
         if isinstance(correctItems[i], list):
