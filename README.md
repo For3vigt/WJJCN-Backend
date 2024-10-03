@@ -1,6 +1,7 @@
 This is a project I worked on, together with 4 other students in Fontys hbo-ICT Semester 3.
 
 Original readme below this line.
+
 ---
 
 # Documentatie linkscraper
